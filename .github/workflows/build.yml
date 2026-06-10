@@ -1,0 +1,36 @@
+name: Build
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Build with Tycho
+        run: mvn -B clean verify
+
+      - name: Upload dropins zip (plugins + features jars)
+        uses: actions/upload-artifact@v4
+        with:
+          name: lms-code-ai-dropins
+          path: com.lmscode.ai.repository/target/lms-code-ai-*-dropins.zip
+          if-no-files-found: error
+
+      - name: Upload p2 update site
+        uses: actions/upload-artifact@v4
+        with:
+          name: lms-code-ai-updatesite
+          path: com.lmscode.ai.repository/target/com.lmscode.ai.repository-*.zip
+          if-no-files-found: error

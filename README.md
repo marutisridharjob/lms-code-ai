@@ -52,6 +52,11 @@ one class + one factory case away.
 mvn clean verify
 ```
 
+> **Don't want to build?** Prebuilt jars/zips are committed under [`dist/`](dist/),
+> and every push also rebuilds them via the **Build** GitHub Actions workflow
+> (download from the run's *Artifacts* section). The `target/` folders mentioned
+> below only exist after a local build — they are git-ignored.
+
 Produces two installable artifacts under `com.lmscode.ai.repository/target/`:
 
 | Artifact | Use |
