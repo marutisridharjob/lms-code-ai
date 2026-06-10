@@ -1,0 +1,8 @@
+target/
+bin/
+*.class
+.DS_Store
+.idea/
+*.iml
+.polyglot.*
+.tycho-consumer-pom.xml

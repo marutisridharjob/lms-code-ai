@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<site>
+   <feature id="com.lmscode.ai.feature" version="0.0.0">
+      <category name="com.lmscode.ai.category"/>
+   </feature>
+   <category-def name="com.lmscode.ai.category" label="LMS Code AI">
+      <description>
+         AI assistant for Eclipse backed by LM Studio or any OpenAI / Anthropic compatible server.
+      </description>
+   </category-def>
+</site>

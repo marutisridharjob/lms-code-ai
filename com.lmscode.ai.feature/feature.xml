@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feature
+      id="com.lmscode.ai.feature"
+      label="LMS Code AI"
+      version="1.0.0.qualifier"
+      provider-name="LMS Code">
+
+   <description>
+      AI assistant for Eclipse backed by a local LM Studio server or any
+      OpenAI / Anthropic (Claude) compatible endpoint: AI refactoring with
+      diff preview, dependency vulnerability analysis and a chat view.
+   </description>
+
+   <copyright>
+      Copyright (c) 2026 LMS Code contributors.
+   </copyright>
+
+   <license url="">
+      Apache License 2.0
+   </license>
+
+   <requires>
+      <import plugin="org.eclipse.ui"/>
+      <import plugin="org.eclipse.core.runtime"/>
+      <import plugin="org.eclipse.core.resources"/>
+      <import plugin="org.eclipse.compare"/>
+      <import plugin="com.google.gson" version="2.10.0" match="greaterOrEqual"/>
+   </requires>
+
+   <plugin
+         id="com.lmscode.ai"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"
+         unpack="false"/>
+
+</feature>

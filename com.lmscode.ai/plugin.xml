@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+
+   <!-- ============ Commands ============ -->
+   <extension point="org.eclipse.ui.commands">
+      <category
+            id="com.lmscode.ai.category"
+            name="LMS Code">
+      </category>
+      <command
+            id="com.lmscode.ai.commands.refactor"
+            categoryId="com.lmscode.ai.category"
+            name="Refactor"
+            description="Refactor the selected code (including code in subfolders) using the configured AI">
+      </command>
+      <command
+            id="com.lmscode.ai.commands.dependency"
+            categoryId="com.lmscode.ai.category"
+            name="Dependency"
+            description="Analyze project dependencies (pom.xml / Gradle) for vulnerabilities and suggested fixes">
+      </command>
+      <command
+            id="com.lmscode.ai.commands.chat"
+            categoryId="com.lmscode.ai.category"
+            name="Chat"
+            description="Open the LMS Chat view with the current selection as context">
+      </command>
+   </extension>
+
+   <!-- ============ Handlers ============ -->
+   <extension point="org.eclipse.ui.handlers">
+      <handler
+            commandId="com.lmscode.ai.commands.refactor"
+            class="com.lmscode.ai.handlers.RefactorHandler">
+      </handler>
+      <handler
+            commandId="com.lmscode.ai.commands.dependency"
+            class="com.lmscode.ai.handlers.DependencyAnalysisHandler">
+      </handler>
+      <handler
+            commandId="com.lmscode.ai.commands.chat"
+            class="com.lmscode.ai.handlers.OpenChatHandler">
+      </handler>
+   </extension>
+
+   <!-- ============ Context menu: right click anywhere ============ -->
+   <extension point="org.eclipse.ui.menus">
+      <menuContribution locationURI="popup:org.eclipse.ui.popup.any?after=additions">
+         <menu
+               id="com.lmscode.ai.menu"
+               label="LMS Code">
+            <command
+                  commandId="com.lmscode.ai.commands.refactor"
+                  label="Refactor"
+                  style="push">
+            </command>
+            <command
+                  commandId="com.lmscode.ai.commands.dependency"
+                  label="Dependency"
+                  style="push">
+            </command>
+            <command
+                  commandId="com.lmscode.ai.commands.chat"
+                  label="Chat"
+                  style="push">
+            </command>
+         </menu>
+      </menuContribution>
+   </extension>
+
+   <!-- ============ Views ============ -->
+   <extension point="org.eclipse.ui.views">
+      <category
+            id="com.lmscode.ai.viewCategory"
+            name="LMS Code">
+      </category>
+      <view
+            id="com.lmscode.ai.views.chatView"
+            name="LMS Chat"
+            category="com.lmscode.ai.viewCategory"
+            class="com.lmscode.ai.views.ChatView"
+            restorable="true">
+      </view>
+      <view
+            id="com.lmscode.ai.views.dependencyView"
+            name="LMS Dependency"
+            category="com.lmscode.ai.viewCategory"
+            class="com.lmscode.ai.views.DependencyView"
+            restorable="true">
+      </view>
+   </extension>
+
+   <!-- ============ Preferences ============ -->
+   <extension point="org.eclipse.ui.preferencePages">
+      <page
+            id="com.lmscode.ai.preferences.page"
+            name="LMS Code AI"
+            class="com.lmscode.ai.preferences.LmsCodePreferencePage">
+      </page>
+   </extension>
+   <extension point="org.eclipse.core.runtime.preferences">
+      <initializer class="com.lmscode.ai.preferences.PreferenceInitializer">
+      </initializer>
+   </extension>
+
+</plugin>
