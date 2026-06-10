@@ -52,12 +52,47 @@ one class + one factory case away.
 mvn clean verify
 ```
 
-Produces an installable p2 update site at
-`com.lmscode.ai.repository/target/repository/` (plus a zipped repo in `target/`).
-Install via `Help → Install New Software… → Add… → Local…` pointing at that folder.
+Produces two installable artifacts under `com.lmscode.ai.repository/target/`:
+
+| Artifact | Use |
+|---|---|
+| `lms-code-ai-<version>-dropins.zip` | Plain plugin + feature jars (`eclipse/plugins/`, `eclipse/features/`) for drop-in installation — no update site needed |
+| `repository/` (and `com.lmscode.ai.repository-<version>.zip`) | p2 update site for `Help → Install New Software…` |
 
 > The build resolves the Eclipse 2024-06 target platform from
 > `download.eclipse.org`, so it needs network access on first run.
+
+### Installing the jars directly (dropins)
+
+The plugin jar is **self-contained** (Gson is embedded), so the jars work on any
+Eclipse 2024-06+ install:
+
+1. Extract `lms-code-ai-<version>-dropins.zip` into your Eclipse installation's
+   `dropins` folder, so you end up with:
+
+   ```
+   <eclipse>/dropins/lms-code-ai/eclipse/plugins/com.lmscode.ai_<version>.jar
+   <eclipse>/dropins/lms-code-ai/eclipse/features/com.lmscode.ai.feature_<version>.jar
+   ```
+
+   (Alternatively, copy the two jars straight into `<eclipse>/dropins/`.)
+
+2. Restart Eclipse with `eclipse -clean` once so the p2 reconciler picks the
+   bundles up.
+3. Verify under `Help → About → Installation Details → Plug-ins`
+   (look for `com.lmscode.ai`), then configure `Window → Preferences → LMS Code AI`.
+
+> Copying jars into the top-level `<eclipse>/plugins` / `<eclipse>/features`
+> folders of a p2-managed installation is **not** reliably picked up on modern
+> Eclipse — use the `dropins` folder (or the update site) instead. The zip's
+> `eclipse/plugins` + `eclipse/features` layout also matches the legacy
+> extension-location format if you do need it.
+
+### Installing from the update site
+
+`Help → Install New Software… → Add… → Local…`, point at
+`com.lmscode.ai.repository/target/repository/` (or the repository zip) and
+select **LMS Code AI**.
 
 ## Developing in Eclipse
 

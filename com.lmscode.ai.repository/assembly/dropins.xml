@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<assembly xmlns="http://maven.apache.org/ASSEMBLY/2.1.1"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/ASSEMBLY/2.1.1 http://maven.apache.org/xsd/assembly-2.1.1.xsd">
+  <!--
+    Drop-in distribution: a zip whose top-level "eclipse" folder mirrors an
+    Eclipse installation. Extract it into <eclipse>/dropins/lms-code-ai/
+    (recommended, picked up by the p2 reconciler) or merge the eclipse/
+    folder into the installation root.
+  -->
+  <id>dropins</id>
+  <formats>
+    <format>zip</format>
+  </formats>
+  <includeBaseDirectory>false</includeBaseDirectory>
+  <fileSets>
+    <fileSet>
+      <directory>${project.build.directory}/repository/plugins</directory>
+      <outputDirectory>eclipse/plugins</outputDirectory>
+      <includes>
+        <include>*.jar</include>
+      </includes>
+    </fileSet>
+    <fileSet>
+      <directory>${project.build.directory}/repository/features</directory>
+      <outputDirectory>eclipse/features</outputDirectory>
+      <includes>
+        <include>*.jar</include>
+      </includes>
+    </fileSet>
+  </fileSets>
+</assembly>

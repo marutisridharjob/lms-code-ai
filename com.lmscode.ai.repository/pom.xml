@@ -14,4 +14,34 @@
   <packaging>eclipse-repository</packaging>
 
   <name>LMS Code AI - Update Site</name>
+
+  <build>
+    <plugins>
+      <!-- Repackages the built plugin/feature jars as a drop-in zip
+           (eclipse/plugins + eclipse/features) for installs without an
+           update site. Bound to verify so it runs after the p2 repository
+           has been assembled in the package phase. -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-assembly-plugin</artifactId>
+        <version>3.7.1</version>
+        <executions>
+          <execution>
+            <id>dropins-zip</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>single</goal>
+            </goals>
+            <configuration>
+              <descriptors>
+                <descriptor>assembly/dropins.xml</descriptor>
+              </descriptors>
+              <appendAssemblyId>true</appendAssemblyId>
+              <finalName>lms-code-ai-${project.version}</finalName>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
 </project>
