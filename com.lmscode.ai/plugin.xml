@@ -49,20 +49,24 @@
       <menuContribution locationURI="popup:org.eclipse.ui.popup.any?after=additions">
          <menu
                id="com.lmscode.ai.menu"
-               label="LMS Code">
+               label="LMS Code"
+               icon="icons/monkey16.png">
             <command
                   commandId="com.lmscode.ai.commands.refactor"
                   label="Refactor"
+                  icon="icons/monkey16.png"
                   style="push">
             </command>
             <command
                   commandId="com.lmscode.ai.commands.dependency"
                   label="Dependency"
+                  icon="icons/monkey16.png"
                   style="push">
             </command>
             <command
                   commandId="com.lmscode.ai.commands.chat"
                   label="Chat"
+                  icon="icons/monkey16.png"
                   style="push">
             </command>
          </menu>
@@ -80,6 +84,7 @@
             name="LMS Chat"
             category="com.lmscode.ai.viewCategory"
             class="com.lmscode.ai.views.ChatView"
+            icon="icons/monkey16.png"
             restorable="true">
       </view>
       <view
@@ -87,6 +92,7 @@
             name="LMS Dependency"
             category="com.lmscode.ai.viewCategory"
             class="com.lmscode.ai.views.DependencyView"
+            icon="icons/monkey16.png"
             restorable="true">
       </view>
    </extension>

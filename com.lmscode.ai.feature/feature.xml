@@ -3,7 +3,8 @@
       id="com.lmscode.ai.feature"
       label="LMS Code AI"
       version="1.0.0.qualifier"
-      provider-name="LMS Code">
+      provider-name="LMS Code"
+      image="monkey32.png">
 
    <description>
       AI assistant for Eclipse backed by a local LM Studio server or any
