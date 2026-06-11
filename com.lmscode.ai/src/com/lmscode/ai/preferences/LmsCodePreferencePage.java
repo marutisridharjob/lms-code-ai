@@ -46,7 +46,7 @@ public class LmsCodePreferencePage extends PreferencePage implements IWorkbenchP
 
 	private static final String[] APPLY_MODE_LABELS = {
 			"Preview changes in a compare editor before applying",
-			"Apply changes directly to files"
+			"Apply automatically (update, format and save files)"
 	};
 	private static final String[] APPLY_MODE_VALUES = {
 			PreferenceConstants.APPLY_MODE_PREVIEW,

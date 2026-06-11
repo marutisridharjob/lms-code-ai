@@ -15,6 +15,18 @@
             description="Refactor the selected code (including code in subfolders) using the configured AI">
       </command>
       <command
+            id="com.lmscode.ai.commands.fixIssues"
+            categoryId="com.lmscode.ai.category"
+            name="Fix Issues"
+            description="Send the selected problems or whole files to the AI and show fixes in the LMS Response view">
+      </command>
+      <command
+            id="com.lmscode.ai.commands.compile"
+            categoryId="com.lmscode.ai.category"
+            name="Compile"
+            description="Run a deep Maven/Gradle compile and analyze the build output with the AI">
+      </command>
+      <command
             id="com.lmscode.ai.commands.dependency"
             categoryId="com.lmscode.ai.category"
             name="Dependency"
@@ -33,6 +45,14 @@
       <handler
             commandId="com.lmscode.ai.commands.refactor"
             class="com.lmscode.ai.handlers.RefactorHandler">
+      </handler>
+      <handler
+            commandId="com.lmscode.ai.commands.fixIssues"
+            class="com.lmscode.ai.handlers.FixIssuesHandler">
+      </handler>
+      <handler
+            commandId="com.lmscode.ai.commands.compile"
+            class="com.lmscode.ai.handlers.CompileHandler">
       </handler>
       <handler
             commandId="com.lmscode.ai.commands.dependency"
@@ -54,6 +74,18 @@
             <command
                   commandId="com.lmscode.ai.commands.refactor"
                   label="Refactor"
+                  icon="icons/monkey16.png"
+                  style="push">
+            </command>
+            <command
+                  commandId="com.lmscode.ai.commands.fixIssues"
+                  label="Fix Issues"
+                  icon="icons/monkey16.png"
+                  style="push">
+            </command>
+            <command
+                  commandId="com.lmscode.ai.commands.compile"
+                  label="Compile"
                   icon="icons/monkey16.png"
                   style="push">
             </command>
@@ -92,6 +124,14 @@
             name="LMS Dependency"
             category="com.lmscode.ai.viewCategory"
             class="com.lmscode.ai.views.DependencyView"
+            icon="icons/monkey16.png"
+            restorable="true">
+      </view>
+      <view
+            id="com.lmscode.ai.views.responseView"
+            name="LMS Response"
+            category="com.lmscode.ai.viewCategory"
+            class="com.lmscode.ai.views.ResponseView"
             icon="icons/monkey16.png"
             restorable="true">
       </view>

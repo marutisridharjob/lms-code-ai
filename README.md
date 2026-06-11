@@ -10,13 +10,21 @@ and a chat view.
 
 ## Features
 
-Right-click any file, package, folder or project → **LMS Code**:
+Right-click any file, package, folder, project — or problems in the **Problems
+view** — and choose **LMS Code**:
 
 | Action | What it does |
 |---|---|
-| **Refactor** | Sends the selected code (recursing into subfolders/packages/projects) to the AI. By default each proposal opens in a **compare editor** so you review the diff and save to apply; a preference switches to direct apply. |
+| **Refactor** | Sends the selected files (whole content + workspace paths, recursing into subfolders) to the AI in size-bounded batches. Suggested per-file changes are applied automatically — updated, run through the code formatter (JDT for Java) and saved — with a summary in the **LMS Response** view. A preference switches to compare-editor previews instead. |
+| **Fix Issues** | Dual-mode: selected **problems** in the Problems view are sent with file, line, message and surrounding code; selected **files** are sent whole (plus their current problem markers). Fixes appear in the **LMS Response** view with file, line, severity and the concrete fix. |
+| **Compile** | Runs a deep compile for the selected project(s) — `mvnw`/`mvn -B clean test-compile` or `gradlew`/`gradle clean compileJava compileTestJava` — and sends the build output to the AI. Compilation and dependency problems with fixes land in the **LMS Response** view. |
 | **Dependency** | Finds the project's `pom.xml` / `build.gradle` / `build.gradle.kts`, asks the AI for known vulnerabilities and fixes, and shows the findings (severity, CVE, fixed version, suggested snippet) in the **LMS Dependency** view. |
 | **Chat** | Opens the **LMS Chat** view seeded with the selected file/text as context. Every transcript entry carries a **timestamp and location** (the workspace path for your messages; `model @ host:port (provider)` for responses). |
+
+**LMS Response view**: a table of findings (file / line / severity / problem)
+with full fix details below; double-click a row to open the file at that line.
+Dependency-management files (pom.xml, Gradle scripts) are always analyzed for
+vulnerable or outdated dependencies as part of Fix Issues and Compile.
 
 ## Configuration
 

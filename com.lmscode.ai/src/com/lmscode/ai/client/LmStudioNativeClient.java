@@ -16,10 +16,13 @@ import com.google.gson.JsonObject;
  * POST {base}/api/v1/chat
  * </pre>
  *
- * The native API has evolved between LM Studio releases, so the response
- * parsing is deliberately tolerant: it accepts the OpenAI-style
- * {@code choices[0].message.content} as well as flat {@code message.content} /
- * {@code content} shapes (string or array of text blocks).
+ * The native chat endpoint takes a required {@code input} field (a union of a
+ * plain string or an array of {@code {role, content}} messages). The message
+ * array form is tried first; if the server rejects it the request is retried
+ * once with the conversation flattened to a single string. Response parsing is
+ * deliberately tolerant: OpenAI-style {@code choices[0].message.content},
+ * flat {@code message.content} / {@code content}, Responses-style
+ * {@code output[].content[].text} and {@code output_text} are all accepted.
  */
 public class LmStudioNativeClient extends AbstractHttpAiClient {
 
@@ -68,26 +71,55 @@ public class LmStudioNativeClient extends AbstractHttpAiClient {
 
 	@Override
 	public String chat(String systemPrompt, List<ChatMessage> messages) throws AiClientException {
+		// Preferred shape: input as an array of {role, content} messages.
+		JsonArray inputMessages = new JsonArray();
+		if (systemPrompt != null && !systemPrompt.isBlank()) {
+			inputMessages.add(message("system", systemPrompt)); //$NON-NLS-1$
+		}
+		for (ChatMessage m : messages) {
+			inputMessages.add(message(m.role(), m.content()));
+		}
+		try {
+			return send(body(inputMessages));
+		} catch (AiClientException e) {
+			String text = e.getMessage() == null ? "" : e.getMessage(); //$NON-NLS-1$
+			if (!text.contains("input")) { //$NON-NLS-1$
+				throw e;
+			}
+			// Fallback shape: input as one flattened string.
+			StringBuilder flat = new StringBuilder();
+			if (systemPrompt != null && !systemPrompt.isBlank()) {
+				flat.append(systemPrompt).append("\n\n"); //$NON-NLS-1$
+			}
+			for (ChatMessage m : messages) {
+				flat.append(m.role()).append(": ").append(m.content()).append("\n\n"); //$NON-NLS-1$ //$NON-NLS-2$
+			}
+			JsonObject fallback = new JsonObject();
+			copyModel(fallback);
+			fallback.addProperty("input", flat.toString()); //$NON-NLS-1$
+			fallback.addProperty("stream", false); //$NON-NLS-1$
+			return send(fallback);
+		}
+	}
+
+	private JsonObject body(JsonArray inputMessages) {
 		JsonObject body = new JsonObject();
+		copyModel(body);
+		body.add("input", inputMessages); //$NON-NLS-1$
+		body.addProperty("stream", false); //$NON-NLS-1$
+		return body;
+	}
+
+	private void copyModel(JsonObject body) {
 		if (settings.model() != null && !settings.model().isBlank()) {
 			body.addProperty("model", settings.model()); //$NON-NLS-1$
 		}
-		JsonArray wireMessages = new JsonArray();
-		if (systemPrompt != null && !systemPrompt.isBlank()) {
-			wireMessages.add(message("system", systemPrompt)); //$NON-NLS-1$
-		}
-		for (ChatMessage m : messages) {
-			wireMessages.add(message(m.role(), m.content()));
-		}
-		body.add("messages", wireMessages); //$NON-NLS-1$
-		if (settings.maxTokens() > 0) {
-			body.addProperty("max_tokens", settings.maxTokens()); //$NON-NLS-1$
-		}
-		body.addProperty("stream", false); //$NON-NLS-1$
+	}
 
+	private String send(JsonObject body) throws AiClientException {
 		JsonObject response = postJson("/api/v1/chat", body); //$NON-NLS-1$
 		String content = extractContent(response);
-		if (content != null) {
+		if (content != null && !content.isBlank()) {
 			return content;
 		}
 		throw new AiClientException("Unexpected chat response shape:\n" + abbreviate(response.toString(), 1000));
@@ -103,6 +135,27 @@ public class LmStudioNativeClient extends AbstractHttpAiClient {
 				if (content != null) {
 					return content;
 				}
+			}
+		}
+		// Responses style convenience field: output_text
+		String outputText = stringMember(response, "output_text"); //$NON-NLS-1$
+		if (outputText != null && !outputText.isBlank()) {
+			return outputText;
+		}
+		// Responses style: output[] items with content[] text blocks
+		JsonElement output = response.get("output"); //$NON-NLS-1$
+		if (output != null && output.isJsonArray()) {
+			StringBuilder sb = new StringBuilder();
+			for (JsonElement item : output.getAsJsonArray()) {
+				if (item.isJsonObject()) {
+					String text = contentOf(item);
+					if (text != null) {
+						sb.append(text);
+					}
+				}
+			}
+			if (!sb.isEmpty()) {
+				return sb.toString();
 			}
 		}
 		// Flat: message.content
