@@ -129,7 +129,8 @@ public class LmsCodePreferencePage extends PreferencePage implements IWorkbenchP
 		fetchButton.addListener(SWT.Selection, e -> fetchModels());
 
 		Group request = group(root, "Requests");
-		timeoutText = labeledText(request, "Timeout (seconds):", SWT.BORDER);
+		timeoutText = labeledText(request, "Wait time for response (minutes):", SWT.BORDER);
+		timeoutText.setToolTipText("How long to wait for the AI before reporting that the model is slow. Default: 3 minutes.");
 		maxTokensText = labeledText(request, "Max tokens (0 = server default):", SWT.BORDER);
 		temperatureText = labeledText(request, "Temperature:", SWT.BORDER);
 
@@ -176,7 +177,7 @@ public class LmsCodePreferencePage extends PreferencePage implements IWorkbenchP
 		apiKeyText.setText(store.getString(PreferenceConstants.P_API_KEY));
 		select(authCombo, AUTH_VALUES, store.getString(PreferenceConstants.P_ANTHROPIC_AUTH));
 		modelCombo.setText(store.getString(PreferenceConstants.P_MODEL));
-		timeoutText.setText(Integer.toString(store.getInt(PreferenceConstants.P_TIMEOUT)));
+		timeoutText.setText(Integer.toString(store.getInt(PreferenceConstants.P_WAIT_MINUTES)));
 		maxTokensText.setText(Integer.toString(store.getInt(PreferenceConstants.P_MAX_TOKENS)));
 		temperatureText.setText(store.getString(PreferenceConstants.P_TEMPERATURE));
 		select(applyModeCombo, APPLY_MODE_VALUES, store.getString(PreferenceConstants.P_REFACTOR_APPLY_MODE));
@@ -203,7 +204,7 @@ public class LmsCodePreferencePage extends PreferencePage implements IWorkbenchP
 		apiKeyText.setText(store.getDefaultString(PreferenceConstants.P_API_KEY));
 		select(authCombo, AUTH_VALUES, store.getDefaultString(PreferenceConstants.P_ANTHROPIC_AUTH));
 		modelCombo.setText(store.getDefaultString(PreferenceConstants.P_MODEL));
-		timeoutText.setText(Integer.toString(store.getDefaultInt(PreferenceConstants.P_TIMEOUT)));
+		timeoutText.setText(Integer.toString(store.getDefaultInt(PreferenceConstants.P_WAIT_MINUTES)));
 		maxTokensText.setText(Integer.toString(store.getDefaultInt(PreferenceConstants.P_MAX_TOKENS)));
 		temperatureText.setText(store.getDefaultString(PreferenceConstants.P_TEMPERATURE));
 		select(applyModeCombo, APPLY_MODE_VALUES, store.getDefaultString(PreferenceConstants.P_REFACTOR_APPLY_MODE));
@@ -219,9 +220,9 @@ public class LmsCodePreferencePage extends PreferencePage implements IWorkbenchP
 			setErrorMessage("Port must be a number between 1 and 65535.");
 			return false;
 		}
-		int timeout = parseInt(timeoutText.getText(), -1);
-		if (timeout <= 0) {
-			setErrorMessage("Timeout must be a positive number of seconds.");
+		int waitMinutes = parseInt(timeoutText.getText(), -1);
+		if (waitMinutes <= 0 || waitMinutes > 120) {
+			setErrorMessage("Wait time must be between 1 and 120 minutes.");
 			return false;
 		}
 		int maxTokens = parseInt(maxTokensText.getText(), -1);
@@ -238,7 +239,7 @@ public class LmsCodePreferencePage extends PreferencePage implements IWorkbenchP
 		store.setValue(PreferenceConstants.P_API_KEY, apiKeyText.getText().trim());
 		store.setValue(PreferenceConstants.P_ANTHROPIC_AUTH, AUTH_VALUES[Math.max(0, authCombo.getSelectionIndex())]);
 		store.setValue(PreferenceConstants.P_MODEL, modelCombo.getText().trim());
-		store.setValue(PreferenceConstants.P_TIMEOUT, timeout);
+		store.setValue(PreferenceConstants.P_WAIT_MINUTES, waitMinutes);
 		store.setValue(PreferenceConstants.P_MAX_TOKENS, maxTokens);
 		store.setValue(PreferenceConstants.P_TEMPERATURE, temperatureText.getText().trim());
 		store.setValue(PreferenceConstants.P_REFACTOR_APPLY_MODE,
@@ -265,7 +266,7 @@ public class LmsCodePreferencePage extends PreferencePage implements IWorkbenchP
 				apiKeyText.getText().trim(),
 				AUTH_VALUES[Math.max(0, authCombo.getSelectionIndex())],
 				modelCombo.getText().trim(),
-				parseInt(timeoutText.getText(), 120),
+				Math.max(1, parseInt(timeoutText.getText(), 3)) * 60,
 				parseInt(maxTokensText.getText(), 0),
 				parseDouble(temperatureText.getText(), 0.2d));
 	}

@@ -15,7 +15,7 @@ public class PreferenceInitializer extends AbstractPreferenceInitializer {
 		store.setDefault(PreferenceConstants.P_PORT, 1234);
 		store.setDefault(PreferenceConstants.P_API_KEY, ""); //$NON-NLS-1$
 		store.setDefault(PreferenceConstants.P_MODEL, ""); //$NON-NLS-1$
-		store.setDefault(PreferenceConstants.P_TIMEOUT, 120);
+		store.setDefault(PreferenceConstants.P_WAIT_MINUTES, 3);
 		store.setDefault(PreferenceConstants.P_MAX_TOKENS, 0);
 		store.setDefault(PreferenceConstants.P_TEMPERATURE, "0.2"); //$NON-NLS-1$
 		store.setDefault(PreferenceConstants.P_REFACTOR_APPLY_MODE, PreferenceConstants.APPLY_MODE_DIRECT);

@@ -18,8 +18,8 @@ public final class PreferenceConstants {
 	public static final String P_API_KEY = "apiKey"; //$NON-NLS-1$
 	/** Model identifier sent with chat requests. */
 	public static final String P_MODEL = "model"; //$NON-NLS-1$
-	/** Request timeout in seconds. */
-	public static final String P_TIMEOUT = "timeoutSeconds"; //$NON-NLS-1$
+	/** How long to wait for an AI response, in minutes. */
+	public static final String P_WAIT_MINUTES = "waitMinutes"; //$NON-NLS-1$
 	/** Max tokens for a completion; 0 lets the server decide (Anthropic falls back to 4096). */
 	public static final String P_MAX_TOKENS = "maxTokens"; //$NON-NLS-1$
 	/** Sampling temperature (ignored by providers that do not accept it). */

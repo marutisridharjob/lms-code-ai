@@ -121,12 +121,21 @@ public class DependencyView extends ViewPart {
 		viewer.getControl().setFocus();
 	}
 
+	private void bringToFront() {
+		try {
+			getSite().getPage().bringToTop(this);
+		} catch (RuntimeException e) {
+			// workbench is closing — nothing to raise
+		}
+	}
+
 	public void setAnalyzing(String buildFilePath) {
 		statusLabel.setText("Analyzing " + buildFilePath + " …");
 		statusLabel.getParent().layout();
 	}
 
 	public void setResults(String buildFilePath, List<DependencyFinding> findings, String raw) {
+		bringToFront();
 		rawAnalysis = raw == null ? "" : raw; //$NON-NLS-1$
 		viewer.setInput(findings);
 		if (findings.isEmpty()) {
@@ -140,6 +149,7 @@ public class DependencyView extends ViewPart {
 	}
 
 	public void setError(String buildFilePath, String message) {
+		bringToFront();
 		statusLabel.setText(buildFilePath + ": analysis failed.");
 		details.setText(message == null ? "Unknown error" : message);
 		statusLabel.getParent().layout();

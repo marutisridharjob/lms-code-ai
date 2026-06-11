@@ -37,7 +37,7 @@ public record AiClientSettings(
 				store.getString(PreferenceConstants.P_API_KEY),
 				store.getString(PreferenceConstants.P_ANTHROPIC_AUTH),
 				store.getString(PreferenceConstants.P_MODEL),
-				store.getInt(PreferenceConstants.P_TIMEOUT),
+				Math.max(1, store.getInt(PreferenceConstants.P_WAIT_MINUTES)) * 60,
 				store.getInt(PreferenceConstants.P_MAX_TOKENS),
 				temperature);
 	}

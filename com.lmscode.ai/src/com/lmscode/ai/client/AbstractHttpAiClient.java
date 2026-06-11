@@ -6,6 +6,7 @@ import java.net.UnknownHostException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Map;
@@ -123,6 +124,12 @@ public abstract class AbstractHttpAiClient implements AiClient {
 		HttpResponse<String> response;
 		try {
 			response = http.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+		} catch (HttpTimeoutException e) {
+			int minutes = Math.max(1, settings.timeoutSeconds() / 60);
+			throw new AiClientException("The LMS model is slow. Please pick another model."
+					+ "\n\nNo response from " + request.uri() + " within " + minutes + " minute(s)."
+					+ " You can also increase the wait time under Preferences > LMS Code AI > Requests,"
+					+ " or load a smaller/faster model in LM Studio.", e);
 		} catch (IOException e) {
 			String message = "Cannot reach " + request.uri() + " (" + e.getMessage()
 					+ "). Is the server running and the host/port correct?";

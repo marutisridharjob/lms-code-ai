@@ -251,6 +251,15 @@ public class ResponseView extends ViewPart {
 		}
 	}
 
+	/** Raises this view when a response lands, even if another view covered it meanwhile. */
+	private void bringToFront() {
+		try {
+			getSite().getPage().bringToTop(this);
+		} catch (RuntimeException e) {
+			// workbench is closing — nothing to raise
+		}
+	}
+
 	private void setWaiting(boolean waiting) {
 		viewer.getTable().setEnabled(!waiting);   // grayed out while waiting
 		details.setEnabled(!waiting);
@@ -264,6 +273,7 @@ public class ResponseView extends ViewPart {
 	public void setResults(String source, List<FixFinding> findings, String raw) {
 		activeJobs.clear();
 		setWaiting(false);
+		bringToFront();
 		rawResponse = raw == null ? "" : raw; //$NON-NLS-1$
 		viewer.setInput(findings);
 		statusLabel.setForeground(dimForeground);
@@ -281,6 +291,7 @@ public class ResponseView extends ViewPart {
 	public void setError(String source, String message) {
 		activeJobs.clear();
 		setWaiting(false);
+		bringToFront();
 		statusLabel.setText(" " + source + ": failed.");
 		statusLabel.setForeground(foreground);
 		details.setText(message == null ? "Unknown error" : message);

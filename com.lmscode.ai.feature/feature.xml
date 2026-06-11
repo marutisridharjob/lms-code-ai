@@ -3,7 +3,7 @@
       id="com.lmscode.ai.feature"
       label="LMS Code AI"
       version="1.0.0.qualifier"
-      provider-name="LMS Code"
+      provider-name="Maruti"
       image="monkey32.png">
 
    <description>
@@ -13,7 +13,7 @@
    </description>
 
    <copyright>
-      Copyright (c) 2026 LMS Code contributors.
+      Copyright (c) 2026 Maruti.
    </copyright>
 
    <license url="">

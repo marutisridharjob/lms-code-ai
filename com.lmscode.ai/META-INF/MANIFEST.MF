@@ -3,7 +3,7 @@ Bundle-ManifestVersion: 2
 Bundle-Name: LMS Code AI
 Bundle-SymbolicName: com.lmscode.ai;singleton:=true
 Bundle-Version: 1.0.0.qualifier
-Bundle-Vendor: LMS Code
+Bundle-Vendor: Maruti
 Bundle-Activator: com.lmscode.ai.Activator
 Bundle-RequiredExecutionEnvironment: JavaSE-21
 Bundle-ActivationPolicy: lazy
