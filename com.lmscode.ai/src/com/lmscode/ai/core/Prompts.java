@@ -24,6 +24,8 @@ public final class Prompts {
 			build.gradle.kts, settings.gradle, gradle/libs.versions.toml), also report dependencies
 			with known vulnerabilities or severely outdated versions as findings, with the fixed
 			version and the exact snippet to change in "fix".
+			Example of the EXACT expected output format:
+			[{"file":"/myapp/src/main/java/com/acme/Foo.java","line":42,"severity":"ERROR","title":"Possible NullPointerException","description":"bar() can return null and is dereferenced without a check.","fix":"if (bar() != null) { ... }"}]
 			If there is nothing to report return [].""";
 
 	/* ===================== Refactor (batch, multi-file) ===================== */

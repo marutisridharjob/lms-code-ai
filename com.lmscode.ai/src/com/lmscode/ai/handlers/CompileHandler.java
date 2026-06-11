@@ -14,6 +14,7 @@ import org.eclipse.ui.PartInitException;
 import org.eclipse.ui.handlers.HandlerUtil;
 
 import com.lmscode.ai.fix.CompileJob;
+import com.lmscode.ai.fix.CompileOptionsDialog;
 import com.lmscode.ai.views.ResponseView;
 
 /**
@@ -35,6 +36,21 @@ public class CompileHandler extends AbstractHandler {
 			return null;
 		}
 
+		boolean anyMaven = projects.stream().anyMatch(p -> p.getFile("pom.xml").exists()); //$NON-NLS-1$
+		boolean anyGradle = projects.stream().anyMatch(
+				p -> p.getFile("build.gradle").exists() || p.getFile("build.gradle.kts").exists()); //$NON-NLS-1$ //$NON-NLS-2$
+		if (!anyMaven && !anyGradle) {
+			MessageDialog.openInformation(shell, "LMS Code",
+					"No pom.xml or Gradle build file found in the selected project(s).");
+			return null;
+		}
+
+		// Pick the goals/tasks; the previous choice is pre-selected.
+		CompileOptionsDialog dialog = new CompileOptionsDialog(shell, anyMaven, anyGradle);
+		if (dialog.open() != CompileOptionsDialog.OK) {
+			return null;
+		}
+
 		ResponseView view;
 		try {
 			IWorkbenchPage page = HandlerUtil.getActiveWorkbenchWindow(event).getActivePage();
@@ -44,8 +60,9 @@ public class CompileHandler extends AbstractHandler {
 		}
 
 		for (IProject project : projects) {
-			view.setBusy("compiling " + project.getName());
-			new CompileJob(project, view).schedule();
+			CompileJob job = new CompileJob(project, view, dialog.mavenGoals(), dialog.gradleTasks());
+			view.setBusy("compiling " + project.getName(), job);
+			job.schedule();
 		}
 		return null;
 	}

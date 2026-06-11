@@ -19,5 +19,10 @@ public class PreferenceInitializer extends AbstractPreferenceInitializer {
 		store.setDefault(PreferenceConstants.P_MAX_TOKENS, 0);
 		store.setDefault(PreferenceConstants.P_TEMPERATURE, "0.2"); //$NON-NLS-1$
 		store.setDefault(PreferenceConstants.P_REFACTOR_APPLY_MODE, PreferenceConstants.APPLY_MODE_DIRECT);
+		store.setDefault(PreferenceConstants.P_ANTHROPIC_AUTH, PreferenceConstants.AUTH_API_KEY);
+		store.setDefault(PreferenceConstants.P_MAVEN_EXEC, ""); //$NON-NLS-1$
+		store.setDefault(PreferenceConstants.P_GRADLE_EXEC, ""); //$NON-NLS-1$
+		store.setDefault(PreferenceConstants.P_MAVEN_GOALS, PreferenceConstants.DEFAULT_MAVEN_GOALS);
+		store.setDefault(PreferenceConstants.P_GRADLE_TASKS, PreferenceConstants.DEFAULT_GRADLE_TASKS);
 	}
 }

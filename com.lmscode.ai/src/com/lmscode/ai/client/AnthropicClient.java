@@ -7,6 +7,7 @@ import java.util.Map;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.lmscode.ai.preferences.PreferenceConstants;
 
 /**
  * Client for Anthropic / Claude compatible servers:
@@ -16,24 +17,47 @@ import com.google.gson.JsonObject;
  * POST {base}/v1/messages
  * </pre>
  *
- * Auth uses the {@code x-api-key} header plus {@code anthropic-version}.
- * The Messages API requires {@code max_tokens}; when the preference is 0
- * a default of 4096 is sent.
+ * Auth is either an API key ({@code x-api-key} header) or — when "Claude Code
+ * login" is selected in preferences — the OAuth bearer token stored locally by
+ * Claude Code ({@code Authorization: Bearer} + {@code anthropic-beta:
+ * oauth-2025-04-20}). OAuth-format keys ({@code sk-ant-oat…}) pasted into the
+ * API key field are also sent as bearer tokens. {@code anthropic-version} is
+ * always sent. The Messages API requires {@code max_tokens}; when the
+ * preference is 0 a default of 4096 is sent.
  */
 public class AnthropicClient extends AbstractHttpAiClient {
 
 	private static final String ANTHROPIC_VERSION = "2023-06-01"; //$NON-NLS-1$
+	private static final String OAUTH_BETA = "oauth-2025-04-20"; //$NON-NLS-1$
+	private static final String OAUTH_TOKEN_PREFIX = "sk-ant-oat"; //$NON-NLS-1$
 	private static final int DEFAULT_MAX_TOKENS = 4096;
+
+	/** Claude Code token resolved once per client (clients are per-operation). */
+	private volatile String claudeCodeToken;
 
 	public AnthropicClient(AiClientSettings settings) {
 		super(settings);
 	}
 
 	@Override
-	protected Map<String, String> headers() {
-		String key = settings.apiKey();
+	protected Map<String, String> headers() throws AiClientException {
+		String key;
+		if (PreferenceConstants.AUTH_CLAUDE_CODE.equals(settings.anthropicAuth())) {
+			if (claudeCodeToken == null) {
+				claudeCodeToken = ClaudeCodeCredentials.accessToken();
+			}
+			key = claudeCodeToken;
+		} else {
+			key = settings.apiKey();
+		}
 		if (key == null || key.isBlank()) {
 			return Map.of("anthropic-version", ANTHROPIC_VERSION); //$NON-NLS-1$
+		}
+		if (key.startsWith(OAUTH_TOKEN_PREFIX)) {
+			return Map.of(
+					"Authorization", "Bearer " + key, //$NON-NLS-1$ //$NON-NLS-2$
+					"anthropic-beta", OAUTH_BETA, //$NON-NLS-1$
+					"anthropic-version", ANTHROPIC_VERSION); //$NON-NLS-1$
 		}
 		return Map.of(
 				"x-api-key", key, //$NON-NLS-1$

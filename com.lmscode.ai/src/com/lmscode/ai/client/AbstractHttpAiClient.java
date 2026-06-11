@@ -42,7 +42,7 @@ public abstract class AbstractHttpAiClient implements AiClient {
 	}
 
 	/** Additional headers (auth etc.) added to every request. */
-	protected abstract Map<String, String> headers();
+	protected abstract Map<String, String> headers() throws AiClientException;
 
 	protected JsonObject getJson(String path) throws AiClientException {
 		return request(path, HttpRequest.Builder::GET);
@@ -109,7 +109,8 @@ public abstract class AbstractHttpAiClient implements AiClient {
 		return false;
 	}
 
-	private HttpRequest build(String baseUrl, String path, UnaryOperator<HttpRequest.Builder> customizer) {
+	private HttpRequest build(String baseUrl, String path, UnaryOperator<HttpRequest.Builder> customizer)
+			throws AiClientException {
 		HttpRequest.Builder b = HttpRequest.newBuilder()
 				.uri(URI.create(baseUrl + path))
 				.timeout(Duration.ofSeconds(Math.max(5, settings.timeoutSeconds())))

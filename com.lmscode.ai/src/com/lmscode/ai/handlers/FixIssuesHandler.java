@@ -53,8 +53,9 @@ public class FixIssuesHandler extends AbstractHandler {
 				MessageDialog.openInformation(shell, "LMS Code",
 						"Only the first " + MAX_PROBLEMS + " selected problems will be analyzed.");
 			}
-			view.setBusy("analyzing " + markers.size() + " problem(s)");
-			FixJob.forProblems(markers, view).schedule();
+			FixJob job = FixJob.forProblems(markers, view);
+			view.setBusy("analyzing " + markers.size() + " problem(s)", job);
+			job.schedule();
 			return null;
 		}
 
@@ -69,8 +70,9 @@ public class FixIssuesHandler extends AbstractHandler {
 						"Analyze " + files.size() + " file(s) with the configured AI?")) {
 			return null;
 		}
-		view.setBusy("analyzing " + files.size() + " file(s)");
-		FixJob.forFiles(files, view).schedule();
+		FixJob job = FixJob.forFiles(files, view);
+		view.setBusy("analyzing " + files.size() + " file(s)", job);
+		job.schedule();
 		return null;
 	}
 

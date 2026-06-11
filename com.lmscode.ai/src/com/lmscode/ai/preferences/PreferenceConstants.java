@@ -26,6 +26,19 @@ public final class PreferenceConstants {
 	public static final String P_TEMPERATURE = "temperature"; //$NON-NLS-1$
 	/** How refactoring results are applied: preview or apply. */
 	public static final String P_REFACTOR_APPLY_MODE = "refactorApplyMode"; //$NON-NLS-1$
+	/** Anthropic auth mode: {@link #AUTH_API_KEY} or {@link #AUTH_CLAUDE_CODE}. */
+	public static final String P_ANTHROPIC_AUTH = "anthropicAuth"; //$NON-NLS-1$
+	/** Absolute path to the Maven executable; empty = auto-detect. */
+	public static final String P_MAVEN_EXEC = "mavenExecutable"; //$NON-NLS-1$
+	/** Absolute path to the Gradle executable; empty = auto-detect. */
+	public static final String P_GRADLE_EXEC = "gradleExecutable"; //$NON-NLS-1$
+	/** Last Maven goals chosen in the Compile dialog. */
+	public static final String P_MAVEN_GOALS = "mavenGoals"; //$NON-NLS-1$
+	/** Last Gradle tasks chosen in the Compile dialog. */
+	public static final String P_GRADLE_TASKS = "gradleTasks"; //$NON-NLS-1$
+
+	public static final String DEFAULT_MAVEN_GOALS = "clean test-compile"; //$NON-NLS-1$
+	public static final String DEFAULT_GRADLE_TASKS = "clean compileJava compileTestJava"; //$NON-NLS-1$
 
 	/** OpenAI-compatible endpoints: /v1/models, /v1/chat/completions (LM Studio exposes these too). */
 	public static final String PROVIDER_OPENAI = "openai"; //$NON-NLS-1$
@@ -36,4 +49,9 @@ public final class PreferenceConstants {
 
 	public static final String APPLY_MODE_PREVIEW = "preview"; //$NON-NLS-1$
 	public static final String APPLY_MODE_DIRECT = "apply"; //$NON-NLS-1$
+
+	/** Use the API key field (x-api-key header). */
+	public static final String AUTH_API_KEY = "apikey"; //$NON-NLS-1$
+	/** Use the local Claude Code login (OAuth bearer token from Keychain / ~/.claude). */
+	public static final String AUTH_CLAUDE_CODE = "claudecode"; //$NON-NLS-1$
 }

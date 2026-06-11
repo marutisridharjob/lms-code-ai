@@ -5,7 +5,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -38,11 +37,15 @@ public class CompileJob extends Job {
 
 	private final IProject project;
 	private final ResponseView view;
+	private final String mavenGoals;
+	private final String gradleTasks;
 
-	public CompileJob(IProject project, ResponseView view) {
+	public CompileJob(IProject project, ResponseView view, String mavenGoals, String gradleTasks) {
 		super("LMS Code: compiling " + project.getName());
 		this.project = project;
 		this.view = view;
+		this.mavenGoals = mavenGoals;
+		this.gradleTasks = gradleTasks;
 		setUser(true);
 	}
 
@@ -83,30 +86,23 @@ public class CompileJob extends Job {
 		} catch (Exception e) {
 			Activator.logError("Compile analysis failed for " + project.getName(), e);
 			String message = e.getMessage()
-					+ "\n\nHint: the build tool must be runnable from Eclipse. A project-local wrapper"
-					+ " (mvnw / gradlew) is used when present; otherwise mvn/gradle must be on the PATH"
-					+ " (on macOS, /opt/homebrew/bin and /usr/local/bin are searched too).";
+					+ "\n\nHint: a project-local wrapper (mvnw / gradlew) is used when present; otherwise"
+					+ " mvn/gradle are searched on the PATH, in Homebrew/MacPorts/SDKMAN locations and"
+					+ " M2_HOME/MAVEN_HOME/GRADLE_HOME, then run via your login shell. If the tool still"
+					+ " isn't found, set its full path under Preferences > LMS Code AI > Build tools"
+					+ " (e.g. /opt/homebrew/bin/mvn — find yours with 'which mvn' in Terminal).";
 			Display.getDefault().asyncExec(() -> view.setError(source, message));
 			return Status.OK_STATUS; // surfaced in the view
 		}
 	}
 
-	/** Picks wrapper or globally installed tool; null when no build file exists. */
-	private static List<String> buildCommand(File dir) {
-		boolean windows = System.getProperty("os.name", "").toLowerCase().contains("win"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-		if (new File(dir, "pom.xml").exists()) { //$NON-NLS-1$
-			String wrapper = windows ? "mvnw.cmd" : "mvnw"; //$NON-NLS-1$ //$NON-NLS-2$
-			String tool = new File(dir, wrapper).canExecute() ? "./" + wrapper : "mvn"; //$NON-NLS-1$ //$NON-NLS-2$
-			List<String> cmd = new ArrayList<>(List.of(tool, "-B", "clean", "test-compile")); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-			return cmd;
+	/** Resolved Maven/Gradle command via {@link BuildToolLocator}; null when no build file exists. */
+	private List<String> buildCommand(File dir) {
+		List<String> maven = BuildToolLocator.maven(dir, mavenGoals);
+		if (maven != null) {
+			return maven;
 		}
-		if (new File(dir, "build.gradle").exists() || new File(dir, "build.gradle.kts").exists()) { //$NON-NLS-1$ //$NON-NLS-2$
-			String wrapper = windows ? "gradlew.bat" : "gradlew"; //$NON-NLS-1$ //$NON-NLS-2$
-			String tool = new File(dir, wrapper).canExecute() ? "./" + wrapper : "gradle"; //$NON-NLS-1$ //$NON-NLS-2$
-			return new ArrayList<>(List.of(tool, "--console=plain", "clean", //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-					"compileJava", "compileTestJava")); //$NON-NLS-1$ //$NON-NLS-2$
-		}
-		return null;
+		return BuildToolLocator.gradle(dir, gradleTasks);
 	}
 
 	private record ProcessResult(int exitCode, String output) {

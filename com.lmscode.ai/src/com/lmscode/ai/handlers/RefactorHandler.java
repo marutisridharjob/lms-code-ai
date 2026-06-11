@@ -59,8 +59,9 @@ public class RefactorHandler extends AbstractHandler {
 		} catch (PartInitException e) {
 			throw new ExecutionException("Cannot open LMS Response view", e);
 		}
-		view.setBusy("refactoring " + files.size() + " file(s)");
-		new RefactorJob(files, applyDirectly, view).schedule();
+		RefactorJob job = new RefactorJob(files, applyDirectly, view);
+		view.setBusy("refactoring " + files.size() + " file(s)", job);
+		job.schedule();
 		return null;
 	}
 }

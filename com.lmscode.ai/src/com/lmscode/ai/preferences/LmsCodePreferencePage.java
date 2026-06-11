@@ -44,6 +44,15 @@ public class LmsCodePreferencePage extends PreferencePage implements IWorkbenchP
 			PreferenceConstants.PROVIDER_ANTHROPIC
 	};
 
+	private static final String[] AUTH_LABELS = {
+			"API key (x-api-key / Bearer header)",
+			"Claude Code login (token from local Claude Code sign-in)"
+	};
+	private static final String[] AUTH_VALUES = {
+			PreferenceConstants.AUTH_API_KEY,
+			PreferenceConstants.AUTH_CLAUDE_CODE
+	};
+
 	private static final String[] APPLY_MODE_LABELS = {
 			"Preview changes in a compare editor before applying",
 			"Apply automatically (update, format and save files)"
@@ -57,11 +66,14 @@ public class LmsCodePreferencePage extends PreferencePage implements IWorkbenchP
 	private Text hostText;
 	private Text portText;
 	private Text apiKeyText;
+	private Combo authCombo;
 	private Combo modelCombo;
 	private Text timeoutText;
 	private Text maxTokensText;
 	private Text temperatureText;
 	private Combo applyModeCombo;
+	private Text mavenExecText;
+	private Text gradleExecText;
 
 	public LmsCodePreferencePage() {
 		setDescription("Configure the AI server used by LMS Code (LM Studio, or any OpenAI / Anthropic compatible endpoint).");
@@ -83,13 +95,27 @@ public class LmsCodePreferencePage extends PreferencePage implements IWorkbenchP
 		hostText = labeledText(server, "Host (name, IP or full URL):", SWT.BORDER);
 		portText = labeledText(server, "Port:", SWT.BORDER);
 		apiKeyText = labeledText(server, "API key (optional for local servers):", SWT.BORDER | SWT.PASSWORD);
+		authCombo = labeledCombo(server, "Anthropic auth:", AUTH_LABELS);
+		authCombo.setToolTipText("'Claude Code login' reads the OAuth token stored by Claude Code"
+				+ " (macOS Keychain 'Claude Code-credentials' or ~/.claude/.credentials.json)."
+				+ " Sign in once via the 'claude' CLI; tokens refresh whenever Claude Code runs."
+				+ " Only used by the Anthropic / Claude provider.");
 
 		Composite serverButtons = new Composite(server, SWT.NONE);
-		serverButtons.setLayout(new GridLayout(2, false));
+		serverButtons.setLayout(new GridLayout(3, false));
 		serverButtons.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 2, 1));
 		Button testButton = new Button(serverButtons, SWT.PUSH);
 		testButton.setText("Test Connection");
 		testButton.addListener(SWT.Selection, e -> testConnection());
+		Button claudeCloudButton = new Button(serverButtons, SWT.PUSH);
+		claudeCloudButton.setText("Use Claude Cloud");
+		claudeCloudButton.setToolTipText("Pre-fill host/port/provider/auth for api.anthropic.com using your Claude Code login");
+		claudeCloudButton.addListener(SWT.Selection, e -> {
+			select(providerCombo, PROVIDER_VALUES, PreferenceConstants.PROVIDER_ANTHROPIC);
+			hostText.setText("https://api.anthropic.com"); //$NON-NLS-1$
+			portText.setText("443"); //$NON-NLS-1$
+			select(authCombo, AUTH_VALUES, PreferenceConstants.AUTH_CLAUDE_CODE);
+		});
 
 		Group model = group(root, "Model");
 		Composite modelRow = new Composite(model, SWT.NONE);
@@ -109,6 +135,12 @@ public class LmsCodePreferencePage extends PreferencePage implements IWorkbenchP
 
 		Group refactor = group(root, "Refactoring");
 		applyModeCombo = labeledCombo(refactor, "When refactoring:", APPLY_MODE_LABELS);
+
+		Group buildTools = group(root, "Build tools (for the Compile action; empty = auto-detect)");
+		mavenExecText = labeledText(buildTools, "Maven executable:", SWT.BORDER);
+		mavenExecText.setMessage("e.g. /opt/homebrew/bin/mvn");
+		gradleExecText = labeledText(buildTools, "Gradle executable:", SWT.BORDER);
+		gradleExecText.setMessage("e.g. /opt/homebrew/bin/gradle");
 
 		loadFrom(getPreferenceStore());
 		return root;
@@ -142,11 +174,14 @@ public class LmsCodePreferencePage extends PreferencePage implements IWorkbenchP
 		hostText.setText(store.getString(PreferenceConstants.P_HOST));
 		portText.setText(Integer.toString(store.getInt(PreferenceConstants.P_PORT)));
 		apiKeyText.setText(store.getString(PreferenceConstants.P_API_KEY));
+		select(authCombo, AUTH_VALUES, store.getString(PreferenceConstants.P_ANTHROPIC_AUTH));
 		modelCombo.setText(store.getString(PreferenceConstants.P_MODEL));
 		timeoutText.setText(Integer.toString(store.getInt(PreferenceConstants.P_TIMEOUT)));
 		maxTokensText.setText(Integer.toString(store.getInt(PreferenceConstants.P_MAX_TOKENS)));
 		temperatureText.setText(store.getString(PreferenceConstants.P_TEMPERATURE));
 		select(applyModeCombo, APPLY_MODE_VALUES, store.getString(PreferenceConstants.P_REFACTOR_APPLY_MODE));
+		mavenExecText.setText(store.getString(PreferenceConstants.P_MAVEN_EXEC));
+		gradleExecText.setText(store.getString(PreferenceConstants.P_GRADLE_EXEC));
 	}
 
 	private static void select(Combo combo, String[] values, String value) {
@@ -166,11 +201,14 @@ public class LmsCodePreferencePage extends PreferencePage implements IWorkbenchP
 		hostText.setText(store.getDefaultString(PreferenceConstants.P_HOST));
 		portText.setText(Integer.toString(store.getDefaultInt(PreferenceConstants.P_PORT)));
 		apiKeyText.setText(store.getDefaultString(PreferenceConstants.P_API_KEY));
+		select(authCombo, AUTH_VALUES, store.getDefaultString(PreferenceConstants.P_ANTHROPIC_AUTH));
 		modelCombo.setText(store.getDefaultString(PreferenceConstants.P_MODEL));
 		timeoutText.setText(Integer.toString(store.getDefaultInt(PreferenceConstants.P_TIMEOUT)));
 		maxTokensText.setText(Integer.toString(store.getDefaultInt(PreferenceConstants.P_MAX_TOKENS)));
 		temperatureText.setText(store.getDefaultString(PreferenceConstants.P_TEMPERATURE));
 		select(applyModeCombo, APPLY_MODE_VALUES, store.getDefaultString(PreferenceConstants.P_REFACTOR_APPLY_MODE));
+		mavenExecText.setText(store.getDefaultString(PreferenceConstants.P_MAVEN_EXEC));
+		gradleExecText.setText(store.getDefaultString(PreferenceConstants.P_GRADLE_EXEC));
 		super.performDefaults();
 	}
 
@@ -198,12 +236,15 @@ public class LmsCodePreferencePage extends PreferencePage implements IWorkbenchP
 		store.setValue(PreferenceConstants.P_HOST, hostText.getText().trim());
 		store.setValue(PreferenceConstants.P_PORT, port);
 		store.setValue(PreferenceConstants.P_API_KEY, apiKeyText.getText().trim());
+		store.setValue(PreferenceConstants.P_ANTHROPIC_AUTH, AUTH_VALUES[Math.max(0, authCombo.getSelectionIndex())]);
 		store.setValue(PreferenceConstants.P_MODEL, modelCombo.getText().trim());
 		store.setValue(PreferenceConstants.P_TIMEOUT, timeout);
 		store.setValue(PreferenceConstants.P_MAX_TOKENS, maxTokens);
 		store.setValue(PreferenceConstants.P_TEMPERATURE, temperatureText.getText().trim());
 		store.setValue(PreferenceConstants.P_REFACTOR_APPLY_MODE,
 				APPLY_MODE_VALUES[Math.max(0, applyModeCombo.getSelectionIndex())]);
+		store.setValue(PreferenceConstants.P_MAVEN_EXEC, mavenExecText.getText().trim());
+		store.setValue(PreferenceConstants.P_GRADLE_EXEC, gradleExecText.getText().trim());
 		return true;
 	}
 
@@ -222,6 +263,7 @@ public class LmsCodePreferencePage extends PreferencePage implements IWorkbenchP
 				hostText.getText().trim(),
 				parseInt(portText.getText(), 1234),
 				apiKeyText.getText().trim(),
+				AUTH_VALUES[Math.max(0, authCombo.getSelectionIndex())],
 				modelCombo.getText().trim(),
 				parseInt(timeoutText.getText(), 120),
 				parseInt(maxTokensText.getText(), 0),
