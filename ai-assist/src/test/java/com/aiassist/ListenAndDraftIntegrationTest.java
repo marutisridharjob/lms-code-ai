@@ -140,6 +140,89 @@ class ListenAndDraftIntegrationTest {
     }
 
     @Test
+    void rejectsOversizedUtterance() {
+        String id = rest.postForEntity("/api/sessions", Map.of(), SessionView.class).getBody().id();
+        ResponseEntity<String> response = rest.postForEntity("/api/sessions/{id}/utterances",
+                Map.of("text", "x".repeat(20_001)), String.class, id);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void rejectsOversizedTopic() {
+        ResponseEntity<String> response = rest.postForEntity("/api/sessions",
+                Map.of("topic", "t".repeat(201)), String.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void rejectsUnknownContentType() {
+        String id = rest.postForEntity("/api/sessions", Map.of(), SessionView.class).getBody().id();
+        rest.postForEntity("/api/sessions/{id}/utterances", Map.of("text", "some notes"), Utterance.class, id);
+        ResponseEntity<String> response = rest.postForEntity("/api/sessions/{id}/draft",
+                Map.of("contentType", "POEM"), String.class, id);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void blankTopicFallsBackToUntitled() {
+        SessionView session = rest.postForEntity("/api/sessions",
+                Map.of("topic", "   "), SessionView.class).getBody();
+        assertThat(session.topic()).isEqualTo("Untitled");
+    }
+
+    @Test
+    void deletedSessionIsGoneAndCannotBeDeletedTwice() {
+        String id = rest.postForEntity("/api/sessions", Map.of(), SessionView.class).getBody().id();
+
+        rest.delete("/api/sessions/{id}", id);
+
+        assertThat(rest.getForEntity("/api/sessions/{id}", String.class, id).getStatusCode())
+                .isEqualTo(HttpStatus.NOT_FOUND);
+        ResponseEntity<String> secondDelete = rest.exchange("/api/sessions/{id}",
+                org.springframework.http.HttpMethod.DELETE, null, String.class, id);
+        assertThat(secondDelete.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void transcriptOfEmptySessionIsEmpty() {
+        String id = rest.postForEntity("/api/sessions", Map.of(), SessionView.class).getBody().id();
+        TranscriptView transcript = rest.getForObject("/api/sessions/{id}/transcript", TranscriptView.class, id);
+        assertThat(transcript.transcript()).isEmpty();
+    }
+
+    @Test
+    void previewOfAnEndedMeetingIsStillAllowed() {
+        String id = rest.postForEntity("/api/sessions",
+                Map.of("topic", "Wrap-up"), SessionView.class).getBody().id();
+        rest.postForEntity("/api/sessions/{id}/utterances", Map.of("text", "final remarks"), Utterance.class, id);
+        rest.postForEntity("/api/sessions/{id}/end", Map.of(), Draft.class, id);
+
+        ResponseEntity<Draft> preview = rest.postForEntity("/api/sessions/{id}/draft", Map.of(), Draft.class, id);
+
+        assertThat(preview.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(preview.getBody().savedTo()).isNull();
+    }
+
+    @Test
+    void endingUnknownSessionReturns404() {
+        ResponseEntity<String> response = rest.postForEntity("/api/sessions/nope/end", Map.of(), String.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void stoppingLiveCaptureWhenIdleIsSafe() {
+        ResponseEntity<Map> response = rest.postForEntity("/api/live/stop", null, Map.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody().get("state")).isEqualTo("IDLE");
+    }
+
+    @Test
+    void liveDraftIsEmptyBeforeAnyMeeting() {
+        ResponseEntity<String> response = rest.getForEntity("/api/live/draft", String.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    }
+
+    @Test
     void liveStatusIsIdleWhenAutoStartDisabled() {
         ResponseEntity<Map> response = rest.getForEntity("/api/live/status", Map.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);

@@ -62,6 +62,69 @@ class TemplateContentDrafterTest {
         assertThat(draft.title()).isEqualTo("Budget approved for next year");
     }
 
+    @Test
+    void blogPostHasIntroductionAndTakeaways() {
+        Draft draft = drafter.draft("Faster builds", NOTES,
+                new DraftOptions(DraftOptions.ContentType.BLOG_POST, DraftOptions.Tone.FRIENDLY));
+
+        assertThat(draft.sections()).extracting(Draft.Section::heading)
+                .containsSubsequence("Introduction", "Main content", "Key takeaways");
+        assertThat(sectionBody(draft, "Introduction")).contains("faster builds");
+    }
+
+    @Test
+    void summaryTypeLeadsWithKeyPoints() {
+        Draft draft = drafter.draft("Digest", NOTES,
+                new DraftOptions(DraftOptions.ContentType.SUMMARY, DraftOptions.Tone.CONCISE));
+
+        assertThat(draft.sections().getFirst().heading()).isEqualTo("Key points");
+        assertThat(draft.summary()).startsWith("Summary of \"Digest\":");
+    }
+
+    @Test
+    void emptyTranscriptStillProducesAGracefulDraft() {
+        Draft draft = drafter.draft("Untitled", "   ", DraftOptions.defaults());
+
+        assertThat(draft.title()).isEqualTo("Draft");
+        assertThat(draft.summary()).isEqualTo("No notes were captured for this draft.");
+        assertThat(sectionBody(draft, "Details")).isEqualTo("No content was captured.");
+        assertThat(draft.keyPoints()).isEmpty();
+        assertThat(draft.actionItems()).isEmpty();
+        assertThat(draft.fullText()).startsWith("# Draft");
+    }
+
+    @Test
+    void existingPunctuationIsNotDoubled() {
+        Draft draft = drafter.draft("Launch", "Ship it now! Are we ready? Yes we are.",
+                new DraftOptions(DraftOptions.ContentType.SUMMARY, DraftOptions.Tone.CONCISE));
+
+        assertThat(sectionBody(draft, "Details"))
+                .contains("Ship it now!")
+                .contains("Are we ready?")
+                .doesNotContain("!.").doesNotContain("?.").doesNotContain("..");
+    }
+
+    @Test
+    void keyPointsAreEmptyWhenEverySentenceIsTooShort() {
+        Draft draft = drafter.draft("Brief", "Yes. No. Maybe so.", DraftOptions.defaults());
+
+        assertThat(draft.keyPoints()).isEmpty();
+        assertThat(draft.sections()).extracting(Draft.Section::heading).doesNotContain("Key points");
+    }
+
+    @Test
+    void longTranscriptIsSplitIntoParagraphs() {
+        StringBuilder notes = new StringBuilder();
+        for (int i = 1; i <= 9; i++) {
+            notes.append("This is detailed observation number ").append(i)
+                    .append(" from the discussion. ");
+        }
+        Draft draft = drafter.draft("Long meeting", notes.toString(), DraftOptions.defaults());
+
+        // Nine sentences grouped three per paragraph -> two paragraph breaks.
+        assertThat(sectionBody(draft, "Details").split("\n\n")).hasSize(3);
+    }
+
     private String sectionBody(Draft draft, String heading) {
         return draft.sections().stream()
                 .filter(s -> s.heading().equals(heading))
