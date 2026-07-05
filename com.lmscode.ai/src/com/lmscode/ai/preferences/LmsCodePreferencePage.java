@@ -92,7 +92,10 @@ public class LmsCodePreferencePage extends PreferencePage implements IWorkbenchP
 
 		Group server = group(root, "Server");
 		providerCombo = labeledCombo(server, "Provider / protocol:", PROVIDER_LABELS);
-		hostText = labeledText(server, "Host (name, IP or full URL):", SWT.BORDER);
+		hostText = labeledText(server, "Endpoint (host, IP or full URL):", SWT.BORDER);
+		hostText.setToolTipText("Examples: 192.168.1.36 · mac-micro.local · http://192.168.1.36:1234"
+				+ " · https://my-gateway:8443/lmstudio (path prefixes are preserved)."
+				+ " The Port field is used only when the URL does not already include a port.");
 		portText = labeledText(server, "Port:", SWT.BORDER);
 		apiKeyText = labeledText(server, "API key (optional for local servers):", SWT.BORDER | SWT.PASSWORD);
 		authCombo = labeledCombo(server, "Anthropic auth:", AUTH_LABELS);

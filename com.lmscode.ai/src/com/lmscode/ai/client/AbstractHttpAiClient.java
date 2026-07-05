@@ -98,6 +98,10 @@ public abstract class AbstractHttpAiClient implements AiClient {
 		if (uri.getPort() != -1) {
 			sb.append(':').append(uri.getPort());
 		}
+		String path = uri.getRawPath();
+		if (path != null && !path.isEmpty() && !"/".equals(path)) { //$NON-NLS-1$
+			sb.append(path); // keep reverse-proxy path prefixes intact
+		}
 		return sb.toString();
 	}
 

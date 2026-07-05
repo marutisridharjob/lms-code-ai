@@ -6,3 +6,4 @@ bin/
 *.iml
 .polyglot.*
 .tycho-consumer-pom.xml
+tests/bin/

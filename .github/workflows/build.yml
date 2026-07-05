@@ -21,6 +21,9 @@ jobs:
       - name: Build with Tycho
         run: mvn -B clean verify
 
+      - name: Integration tests (mock LM Studio server)
+        run: bash tests/run-tests.sh
+
       - name: Upload dropins zip (plugins + features jars)
         uses: actions/upload-artifact@v4
         with:
