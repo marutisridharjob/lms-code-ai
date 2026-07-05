@@ -78,7 +78,8 @@
       <option value="PERSUASIVE">Persuasive</option>
     </select>
     <div class="row">
-      <button id="draftBtn" class="primary" disabled>Draft content</button>
+      <button id="draftBtn" class="primary" disabled>Preview draft</button>
+      <button id="endBtn" class="primary" style="background:#dc2626" disabled>✅ End meeting &amp; save notes</button>
       <button id="copyBtn" class="secondary" hidden>Copy draft</button>
       <span id="engineBadge" class="badge" hidden></span>
     </div>
@@ -120,6 +121,7 @@
       if (st.sessionId && (st.state === 'LISTENING' || st.state === 'PREPARING')) {
         sessionId = st.sessionId;
         $('draftBtn').disabled = false;
+        $('endBtn').disabled = false;
         $('typedText').disabled = false;
         setLive(true);
         status(st.state === 'PREPARING' ? 'Preparing speech model…' : 'Listening to meeting audio…');
@@ -144,6 +146,7 @@
     if (!res.ok) { status(st.detail || 'Could not start meeting capture.'); return; }
     sessionId = st.sessionId;
     $('draftBtn').disabled = false;
+    $('endBtn').disabled = false;
     setLive(true);
     status('Capturing audio — transcription runs locally on this machine, nothing leaves it.');
     livePollTimer = setInterval(pollLive, 2000);
@@ -196,6 +199,7 @@
     renderedCount = 0;
     $('typedText').disabled = false;
     $('draftBtn').disabled = false;
+    $('endBtn').disabled = false;
     status('Session started — speak or type your notes.');
   };
 
@@ -231,7 +235,30 @@
     $('engineBadge').textContent = 'engine: ' + draft.generatedBy;
     $('engineBadge').hidden = false;
     $('copyBtn').hidden = false;
-    status(draft.savedTo ? 'Draft ready — saved to ' + draft.savedTo : 'Draft ready.');
+    status('Preview ready — nothing saved yet. End the meeting to save the notes file.');
+  };
+
+  $('endBtn').onclick = async () => {
+    if (!confirm('End the meeting and save the final notes file?')) return;
+    status('Ending meeting and drafting final notes…');
+    const res = await fetch(`/api/sessions/${sessionId}/end`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contentType: $('contentType').value, tone: $('tone').value })
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) { status(body.detail || 'Could not end the meeting.'); return; }
+    setLive(false);
+    lastDraftText = body.fullText;
+    $('draftOutput').innerHTML = renderMarkdown(body.fullText);
+    $('engineBadge').textContent = 'engine: ' + body.generatedBy + ' (final)';
+    $('engineBadge').hidden = false;
+    $('copyBtn').hidden = false;
+    $('endBtn').disabled = true;
+    $('draftBtn').disabled = true;
+    $('typedText').disabled = true;
+    status(body.savedTo ? 'Meeting ended — full notes saved to ' + body.savedTo
+                        : 'Meeting ended — file saving is disabled in configuration.');
   };
 
   $('copyBtn').onclick = () => navigator.clipboard.writeText(lastDraftText).then(() => status('Copied to clipboard.'));

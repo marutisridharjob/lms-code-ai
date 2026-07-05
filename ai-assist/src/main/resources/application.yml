@@ -7,8 +7,9 @@ server:
 
 ai-assist:
   output:
-    # Every draft is also written to disk as a timestamped Markdown file,
-    # e.g. drafts/2026-07-05_14-30-05_weekly-status-meeting.md
+    # When a meeting is ended, its complete notes are saved as a timestamped
+    # Markdown file, e.g. drafts/2026-07-05_14-30-05_weekly-status-meeting.md.
+    # Nothing is written to disk until the meeting is explicitly ended.
     save-drafts: true
     dir: drafts
   auto:

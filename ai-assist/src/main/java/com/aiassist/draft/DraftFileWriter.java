@@ -37,17 +37,6 @@ public class DraftFileWriter {
         return write(draft, stamp + "_" + slug(draft.title()) + ".md");
     }
 
-    /**
-     * Saves under a stable name so a rolling auto-draft updates one file per
-     * session instead of creating a new file every cycle. The name still
-     * carries the given timestamp (the session start).
-     */
-    public Path saveRolling(Draft draft, LocalDateTime sessionStart, String sessionId) {
-        String stamp = sessionStart.format(TIMESTAMP);
-        String shortId = sessionId.length() > 8 ? sessionId.substring(0, 8) : sessionId;
-        return write(draft, stamp + "_live_" + shortId + ".md");
-    }
-
     private Path write(Draft draft, String fileName) {
         if (!properties.saveDrafts()) {
             return null;

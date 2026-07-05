@@ -25,18 +25,12 @@ public class DraftController {
 
     private final SessionStore store;
     private final ContentDrafter drafter;
-    private final DraftFileWriter fileWriter;
+    private final MeetingEndService meetingEndService;
 
-    public DraftController(SessionStore store, ContentDrafter drafter, DraftFileWriter fileWriter) {
+    public DraftController(SessionStore store, ContentDrafter drafter, MeetingEndService meetingEndService) {
         this.store = store;
         this.drafter = drafter;
-        this.fileWriter = fileWriter;
-    }
-
-    private Draft draftAndSave(String topic, String transcript, DraftOptions options) {
-        Draft draft = drafter.draft(topic, transcript, options);
-        java.nio.file.Path saved = fileWriter.save(draft);
-        return saved == null ? draft : draft.withSavedTo(saved.toString());
+        this.meetingEndService = meetingEndService;
     }
 
     public record SessionDraftRequest(DraftOptions.ContentType contentType, DraftOptions.Tone tone) {
@@ -48,7 +42,10 @@ public class DraftController {
                                     DraftOptions.Tone tone) {
     }
 
-    /** Draft from everything captured in a listening session. */
+    /**
+     * Preview a draft from everything captured so far. Nothing is written to
+     * disk — the notes file is only saved when the meeting is ended.
+     */
     @PostMapping("/sessions/{id}/draft")
     public Draft draftFromSession(@PathVariable String id,
                                   @Valid @RequestBody(required = false) SessionDraftRequest request) {
@@ -61,13 +58,34 @@ public class DraftController {
         DraftOptions options = request == null
                 ? DraftOptions.defaults()
                 : new DraftOptions(request.contentType(), request.tone());
-        return draftAndSave(session.topic(), transcript, options);
+        return drafter.draft(session.topic(), transcript, options);
+    }
+
+    /**
+     * Marks the meeting as ended: stops live capture for this session, locks
+     * it against further input, drafts the complete end-to-end content, and
+     * saves the timestamped notes file (the only moment a file is written).
+     */
+    @PostMapping("/sessions/{id}/end")
+    public Draft endMeeting(@PathVariable String id,
+                            @Valid @RequestBody(required = false) SessionDraftRequest request) {
+        return meetingEndService.endMeeting(id, toOptions(request));
+    }
+
+    /** Ends whichever meeting the live capture is currently feeding. */
+    @PostMapping("/live/end")
+    public Draft endLiveMeeting(@Valid @RequestBody(required = false) SessionDraftRequest request) {
+        return meetingEndService.endCurrentLiveMeeting(toOptions(request));
+    }
+
+    private DraftOptions toOptions(SessionDraftRequest request) {
+        return request == null ? null : new DraftOptions(request.contentType(), request.tone());
     }
 
     /** Draft directly from supplied notes, without a listening session. */
     @PostMapping("/draft")
     public Draft draftAdHoc(@Valid @RequestBody AdHocDraftRequest request) {
         String topic = request.topic() == null || request.topic().isBlank() ? "Untitled" : request.topic().strip();
-        return draftAndSave(topic, request.notes(), new DraftOptions(request.contentType(), request.tone()));
+        return drafter.draft(topic, request.notes(), new DraftOptions(request.contentType(), request.tone()));
     }
 }

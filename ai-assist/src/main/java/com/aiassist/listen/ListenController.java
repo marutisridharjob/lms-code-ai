@@ -39,13 +39,13 @@ public class ListenController {
                                    @Size(max = 100) String speaker) {
     }
 
-    public record SessionView(String id, String topic, Instant startedAt,
-                              int utteranceCount, List<Utterance> utterances) {
+    public record SessionView(String id, String topic, Instant startedAt, Instant endedAt,
+                              boolean ended, int utteranceCount, List<Utterance> utterances) {
 
         static SessionView of(ListeningSession session) {
             List<Utterance> utterances = session.utterances();
             return new SessionView(session.id(), session.topic(), session.startedAt(),
-                    utterances.size(), utterances);
+                    session.endedAt(), session.isEnded(), utterances.size(), utterances);
         }
     }
 

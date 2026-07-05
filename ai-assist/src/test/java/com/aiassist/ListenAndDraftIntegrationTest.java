@@ -55,13 +55,57 @@ class ListenAndDraftIntegrationTest {
         assertThat(draft.actionItems()).anySatisfy(a -> assertThat(a).contains("test coverage"));
         assertThat(draft.fullText()).contains("# Sprint retrospective");
 
-        // Every draft is persisted as a timestamped Markdown file.
+        // Previews are never persisted; the file is only written at meeting end.
+        assertThat(draft.savedTo()).isNull();
+    }
+
+    @Test
+    void endingTheMeetingSavesTheFullNotesFileAndLocksTheSession() {
+        String id = rest.postForEntity("/api/sessions",
+                Map.of("topic", "Quarterly review"), SessionView.class).getBody().id();
+        rest.postForEntity("/api/sessions/{id}/utterances",
+                Map.of("text", "Revenue grew twelve percent over the previous quarter."), Utterance.class, id);
+        rest.postForEntity("/api/sessions/{id}/utterances",
+                Map.of("text", "We need to hire two more engineers for the platform team."), Utterance.class, id);
+
+        ResponseEntity<Draft> ended = rest.postForEntity("/api/sessions/{id}/end",
+                Map.of("contentType", "MEETING_NOTES", "tone", "PROFESSIONAL"), Draft.class, id);
+        assertThat(ended.getStatusCode()).isEqualTo(HttpStatus.OK);
+        Draft draft = ended.getBody();
+
+        // The final end-to-end content is saved as one timestamped file.
         assertThat(draft.savedTo()).isNotNull();
         java.nio.file.Path saved = java.nio.file.Path.of(draft.savedTo());
         assertThat(saved).exists();
         assertThat(saved.getFileName().toString())
-                .matches("\\d{4}-\\d{2}-\\d{2}_\\d{2}-\\d{2}-\\d{2}_sprint-retrospective\\.md");
-        assertThat(saved).content().contains("# Sprint retrospective");
+                .matches("\\d{4}-\\d{2}-\\d{2}_\\d{2}-\\d{2}-\\d{2}_quarterly-review\\.md");
+        assertThat(saved).content()
+                .contains("# Quarterly review")
+                .contains("Revenue grew twelve percent")
+                .contains("hire two more engineers");
+
+        // The session is now read-only and cannot be ended twice.
+        ResponseEntity<String> lateUtterance = rest.postForEntity("/api/sessions/{id}/utterances",
+                Map.of("text", "one more thing"), String.class, id);
+        assertThat(lateUtterance.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        ResponseEntity<String> secondEnd = rest.postForEntity("/api/sessions/{id}/end", Map.of(), String.class, id);
+        assertThat(secondEnd.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+
+        SessionView view = rest.getForObject("/api/sessions/{id}", SessionView.class, id);
+        assertThat(view.ended()).isTrue();
+    }
+
+    @Test
+    void endingAnEmptyMeetingIsRejected() {
+        String id = rest.postForEntity("/api/sessions", Map.of(), SessionView.class).getBody().id();
+        ResponseEntity<String> response = rest.postForEntity("/api/sessions/{id}/end", Map.of(), String.class, id);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+    }
+
+    @Test
+    void endingLiveMeetingWithoutOneRunningReturns404() {
+        ResponseEntity<String> response = rest.postForEntity("/api/live/end", Map.of(), String.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
     @Test
