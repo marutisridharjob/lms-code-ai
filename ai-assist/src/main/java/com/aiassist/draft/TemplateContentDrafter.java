@@ -37,7 +37,7 @@ public class TemplateContentDrafter implements ContentDrafter {
         String fullText = renderFullText(title, summary, sections);
 
         return new Draft(title, options.contentType().name(), options.tone().name(),
-                summary, sections, keyPoints, actionItems, fullText, name(), Instant.now());
+                summary, sections, keyPoints, actionItems, fullText, name(), Instant.now(), null);
     }
 
     @Override

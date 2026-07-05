@@ -231,7 +231,7 @@
     $('engineBadge').textContent = 'engine: ' + draft.generatedBy;
     $('engineBadge').hidden = false;
     $('copyBtn').hidden = false;
-    status('Draft ready.');
+    status(draft.savedTo ? 'Draft ready — saved to ' + draft.savedTo : 'Draft ready.');
   };
 
   $('copyBtn').onclick = () => navigator.clipboard.writeText(lastDraftText).then(() => status('Copied to clipboard.'));

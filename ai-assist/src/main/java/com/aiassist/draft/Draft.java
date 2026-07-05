@@ -13,8 +13,15 @@ public record Draft(String title,
                     List<String> actionItems,
                     String fullText,
                     String generatedBy,
-                    Instant generatedAt) {
+                    Instant generatedAt,
+                    String savedTo) {
 
     public record Section(String heading, String body) {
+    }
+
+    /** Drafters produce drafts without a file; the writer attaches the path afterwards. */
+    public Draft withSavedTo(String path) {
+        return new Draft(title, contentType, tone, summary, sections, keyPoints,
+                actionItems, fullText, generatedBy, generatedAt, path);
     }
 }

@@ -20,7 +20,8 @@ import static org.assertj.core.api.Assertions.assertThat;
         properties = {
                 // keep tests hands-off: no audio capture, no browser, no scheduling side effects
                 "ai-assist.auto.start-capture=false",
-                "ai-assist.auto.open-browser=false"
+                "ai-assist.auto.open-browser=false",
+                "ai-assist.output.dir=target/test-drafts"
         })
 class ListenAndDraftIntegrationTest {
 
@@ -53,6 +54,14 @@ class ListenAndDraftIntegrationTest {
         assertThat(draft.contentType()).isEqualTo("MEETING_NOTES");
         assertThat(draft.actionItems()).anySatisfy(a -> assertThat(a).contains("test coverage"));
         assertThat(draft.fullText()).contains("# Sprint retrospective");
+
+        // Every draft is persisted as a timestamped Markdown file.
+        assertThat(draft.savedTo()).isNotNull();
+        java.nio.file.Path saved = java.nio.file.Path.of(draft.savedTo());
+        assertThat(saved).exists();
+        assertThat(saved.getFileName().toString())
+                .matches("\\d{4}-\\d{2}-\\d{2}_\\d{2}-\\d{2}-\\d{2}_sprint-retrospective\\.md");
+        assertThat(saved).content().contains("# Sprint retrospective");
     }
 
     @Test

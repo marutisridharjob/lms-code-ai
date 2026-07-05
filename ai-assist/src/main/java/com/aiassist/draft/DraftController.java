@@ -25,10 +25,18 @@ public class DraftController {
 
     private final SessionStore store;
     private final ContentDrafter drafter;
+    private final DraftFileWriter fileWriter;
 
-    public DraftController(SessionStore store, ContentDrafter drafter) {
+    public DraftController(SessionStore store, ContentDrafter drafter, DraftFileWriter fileWriter) {
         this.store = store;
         this.drafter = drafter;
+        this.fileWriter = fileWriter;
+    }
+
+    private Draft draftAndSave(String topic, String transcript, DraftOptions options) {
+        Draft draft = drafter.draft(topic, transcript, options);
+        java.nio.file.Path saved = fileWriter.save(draft);
+        return saved == null ? draft : draft.withSavedTo(saved.toString());
     }
 
     public record SessionDraftRequest(DraftOptions.ContentType contentType, DraftOptions.Tone tone) {
@@ -53,13 +61,13 @@ public class DraftController {
         DraftOptions options = request == null
                 ? DraftOptions.defaults()
                 : new DraftOptions(request.contentType(), request.tone());
-        return drafter.draft(session.topic(), transcript, options);
+        return draftAndSave(session.topic(), transcript, options);
     }
 
     /** Draft directly from supplied notes, without a listening session. */
     @PostMapping("/draft")
     public Draft draftAdHoc(@Valid @RequestBody AdHocDraftRequest request) {
         String topic = request.topic() == null || request.topic().isBlank() ? "Untitled" : request.topic().strip();
-        return drafter.draft(topic, request.notes(), new DraftOptions(request.contentType(), request.tone()));
+        return draftAndSave(topic, request.notes(), new DraftOptions(request.contentType(), request.tone()));
     }
 }

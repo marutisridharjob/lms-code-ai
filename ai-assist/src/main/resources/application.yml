@@ -6,6 +6,11 @@ server:
   port: 8080
 
 ai-assist:
+  output:
+    # Every draft is also written to disk as a timestamped Markdown file,
+    # e.g. drafts/2026-07-05_14-30-05_weekly-status-meeting.md
+    save-drafts: true
+    dir: drafts
   auto:
     # Double-click-and-go: start capturing audio and open the browser UI as
     # soon as the app launches, then keep re-drafting notes automatically.

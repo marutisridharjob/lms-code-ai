@@ -9,6 +9,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import com.aiassist.config.AutoPilotProperties;
 import com.aiassist.draft.ContentDrafter;
 import com.aiassist.draft.Draft;
+import com.aiassist.draft.DraftFileWriter;
 import com.aiassist.draft.DraftOptions;
 import com.aiassist.listen.ListeningSession;
 import com.aiassist.listen.SessionStore;
@@ -37,6 +38,7 @@ public class AutoPilot {
     private final AudioDeviceService audioDevices;
     private final SessionStore sessions;
     private final ContentDrafter drafter;
+    private final DraftFileWriter fileWriter;
     private final Environment environment;
 
     private final AtomicReference<Draft> latestDraft = new AtomicReference<>();
@@ -44,12 +46,13 @@ public class AutoPilot {
 
     public AutoPilot(AutoPilotProperties properties, LiveTranscriptionService liveTranscription,
                      AudioDeviceService audioDevices, SessionStore sessions,
-                     ContentDrafter drafter, Environment environment) {
+                     ContentDrafter drafter, DraftFileWriter fileWriter, Environment environment) {
         this.properties = properties;
         this.liveTranscription = liveTranscription;
         this.audioDevices = audioDevices;
         this.sessions = sessions;
         this.drafter = drafter;
+        this.fileWriter = fileWriter;
         this.environment = environment;
     }
 
@@ -122,9 +125,18 @@ public class AutoPilot {
         }
         Draft draft = drafter.draft(session.topic(), session.transcript(),
                 new DraftOptions(properties.contentType(), properties.tone()));
+        // One rolling file per session, named with the session-start timestamp,
+        // refreshed on every cycle so the notes on disk are always current.
+        java.nio.file.Path saved = fileWriter.saveRolling(draft,
+                java.time.LocalDateTime.ofInstant(session.startedAt(), java.time.ZoneId.systemDefault()),
+                session.id());
+        if (saved != null) {
+            draft = draft.withSavedTo(saved.toString());
+        }
         latestDraft.set(draft);
         draftedUtteranceCount.set(count);
-        log.info("Auto-drafted notes from {} captured utterances", count);
+        log.info("Auto-drafted notes from {} captured utterances{}", count,
+                saved == null ? "" : " -> " + saved);
     }
 
     public Draft latestDraft() {

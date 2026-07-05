@@ -25,7 +25,10 @@ On launch the app automatically:
 2. opens `http://localhost:8080` in your browser,
 3. transcribes speech locally with [Vosk](https://alphacephei.com/vosk/), and
 4. re-drafts detailed notes every 30 seconds while it listens — the draft is
-   always on screen and ready to copy.
+   always on screen, and it is continuously written to a timestamped Markdown
+   file in `./drafts` (e.g. `drafts/2026-07-05_14-30-05_live_ab12cd34.md`), so
+   the notes survive even if you close everything mid-meeting. Manual drafts
+   get their own timestamped file per draft.
 
 Close the terminal window (or `Ctrl+C`) to stop.
 
@@ -100,10 +103,20 @@ curl -X POST localhost:8080/api/sessions/{id}/draft -H 'Content-Type: applicatio
      -d '{"contentType":"MEETING_NOTES","tone":"PROFESSIONAL"}'
 ```
 
+## Platforms
+
+| Platform | Support |
+|---|---|
+| Windows / macOS / Linux | Full: runs the app, captures audio, drafts, saves files |
+| iPhone / Android | As a remote screen: open `http://<computer-ip>:8080` in the phone browser to watch live notes and copy drafts (the app itself runs on a computer — there is no JVM on iOS) |
+
 ## Configuration (`application.yml`)
 
 ```yaml
 ai-assist:
+  output:
+    save-drafts: true          # write each draft to a timestamped .md file
+    dir: drafts                # where the files go
   auto:
     start-capture: true        # listen immediately on launch
     open-browser: true         # open the UI on launch
