@@ -10,7 +10,7 @@ set JAR=
 for %%f in (ai-assist-*.jar) do set JAR=%%f
 if "%JAR%"=="" for %%f in (target\ai-assist-*.jar) do set JAR=target\%%f
 if "%JAR%"=="" (
-  echo ai-assist jar not found. Build it first with: mvn package
+  echo ai-assist jar not found. Build it first with: mvn package -Pfetch-model
   pause
   exit /b 1
 )

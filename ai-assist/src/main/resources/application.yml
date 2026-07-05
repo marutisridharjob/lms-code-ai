@@ -15,9 +15,14 @@ ai-assist:
     content-type: MEETING_NOTES
     tone: PROFESSIONAL
   transcription:
-    # Where the Vosk speech model is stored (auto-downloaded on first use).
+    # The Vosk speech model is loaded from ./models or model-dir below.
+    # Get it without the app ever going online: build once with
+    #   mvn package -Pfetch-model
+    # or unzip a model from alphacephei.com/vosk/models into ./models.
     model-dir: ${user.home}/.ai-assist/models
     model-name: vosk-model-small-en-us-0.15
+    # Keep false so the app never uses the internet at runtime.
+    allow-download: false
     sample-rate: 16000
     # Default capture device for live meeting transcription. Leave empty to use
     # the OS default input; set to a loopback device (e.g. "Stereo Mix",

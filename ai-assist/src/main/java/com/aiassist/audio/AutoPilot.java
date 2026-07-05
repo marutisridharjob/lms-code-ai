@@ -95,7 +95,9 @@ public class AutoPilot {
                 Desktop.getDesktop().browse(ui);
                 return;
             }
-        } catch (Exception e) {
+        } catch (Throwable e) {
+            // AWT can throw Errors (e.g. AWTError when no display is reachable);
+            // opening the browser is best-effort and must never break startup.
             log.debug("Desktop browse failed: {}", e.getMessage());
         }
         log.info("Open {} in your browser to see live notes", ui);

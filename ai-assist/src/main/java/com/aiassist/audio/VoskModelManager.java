@@ -19,9 +19,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
- * Locates the Vosk speech model, downloading and unpacking it on first use.
- * The small English model is ~40&nbsp;MB; larger/other-language models from
- * https://alphacephei.com/vosk/models can be configured instead.
+ * Locates the Vosk speech model on local disk. The app is offline by
+ * default: the model must already be present (unzipped from
+ * https://alphacephei.com/vosk/models, fetched once at build time via
+ * {@code mvn package -Pfetch-model}, or copied from another machine).
+ * Runtime download only happens when explicitly enabled with
+ * {@code ai-assist.transcription.allow-download=true}.
  */
 @Service
 public class VoskModelManager {
@@ -34,11 +37,24 @@ public class VoskModelManager {
         this.properties = properties;
     }
 
-    /** Returns the model directory, downloading the model first if needed. */
+    /** Returns the model directory, never touching the network unless allowed. */
     public synchronized Path ensureModel() throws IOException, InterruptedException {
+        // Search local locations: a models/ folder next to the app, then the configured dir.
+        Path bundled = Path.of("models", properties.modelName());
+        if (isModelPresent(bundled)) {
+            return bundled;
+        }
         Path modelPath = Path.of(properties.modelDir(), properties.modelName());
         if (isModelPresent(modelPath)) {
             return modelPath;
+        }
+        if (!properties.allowDownload()) {
+            throw new IOException(("Speech model \"%s\" not found (looked in %s and %s) and runtime "
+                    + "download is disabled so the app stays offline. Either build with "
+                    + "`mvn package -Pfetch-model`, or download %s on another machine, unzip it, and "
+                    + "place the folder in one of those locations.")
+                    .formatted(properties.modelName(), bundled.toAbsolutePath(), modelPath.toAbsolutePath(),
+                            properties.modelUrl()));
         }
         log.info("Vosk model not found at {}; downloading from {}", modelPath, properties.modelUrl());
         Files.createDirectories(modelPath.getParent());

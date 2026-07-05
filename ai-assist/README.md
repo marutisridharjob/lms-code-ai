@@ -5,12 +5,16 @@ Webex or MS Teams meeting playing on this computer, your dictation, or typed
 notes — and **drafts detailed content** from it: meeting notes, emails,
 documents, blog posts, or summaries.
 
-Everything runs locally with open-source libraries. No cloud services or API
-keys are required.
+**The app is fully offline.** Audio never leaves the machine, transcription
+and drafting run locally, and the app makes no network requests at runtime —
+runtime model download is disabled by default and the cloud-backed browser
+speech API is deliberately not used. The only internet use is the one-time
+build on your dev machine (Maven dependencies + optionally the speech model).
 
 ## Double-click and go
 
-1. Build once: `mvn package`
+1. Build once (this also fetches the offline speech model into `./models`):
+   `mvn package -Pfetch-model`
 2. Double-click the launcher next to the jar:
    - **macOS**: `launch/AI-Assist.command` (first time: `chmod +x AI-Assist.command`)
    - **Windows**: `launch/AI-Assist.bat`
@@ -19,12 +23,16 @@ On launch the app automatically:
 
 1. starts capturing audio (it prefers a loopback device so it hears the meeting),
 2. opens `http://localhost:8080` in your browser,
-3. transcribes speech offline with [Vosk](https://alphacephei.com/vosk/)
-   (the ~40 MB English model is downloaded on first run), and
+3. transcribes speech locally with [Vosk](https://alphacephei.com/vosk/), and
 4. re-drafts detailed notes every 30 seconds while it listens — the draft is
    always on screen and ready to copy.
 
 Close the terminal window (or `Ctrl+C`) to stop.
+
+To run on a machine with no internet at all: build elsewhere, then copy the
+jar, the launcher, and the `models/` folder together. (Alternatively, unzip
+any model from [alphacephei.com/vosk/models](https://alphacephei.com/vosk/models)
+into `models/` yourself.)
 
 ## Hearing Webex / MS Teams audio
 
@@ -49,22 +57,21 @@ dictating your own notes.
 
 ```
 Webex/Teams audio ─┐
-Microphone ────────┼─► Java Sound capture ─► Vosk (offline STT) ─┐
-Browser mic (Web Speech API) ────────────────────────────────────┼─► Listening session ─► Drafting engine ─► Detailed draft
-Typed notes ─────────────────────────────────────────────────────┘        (transcript)      (template or Ollama)
+Microphone ────────┼─► Java Sound capture ─► Vosk (offline STT) ─┬─► Listening session ─► Drafting engine ─► Detailed draft
+Typed notes ─────────────────────────────────────────────────────┘        (transcript)      (template or local Ollama)
 ```
 
-- **Listening sessions** accumulate utterances (from live capture, the browser
-  mic, or typing) with ordering and timestamps.
+- **Listening sessions** accumulate utterances (from live capture or typing)
+  with ordering and timestamps.
 - The **template drafting engine** (default, zero dependencies) segments the
   transcript, promotes the most informative sentences to key points, extracts
   commitments ("we need to…", "John will…") as action items, and assembles a
   structured document with a summary and sections shaped by content type
   (document, email, meeting notes, blog post, summary) and tone.
 - Optionally, set `ai-assist.ollama.enabled=true` to draft with a local
-  open-source LLM served by [Ollama](https://ollama.com) (e.g. `llama3.2`);
-  if Ollama is unreachable the template engine takes over, so a draft is
-  always produced.
+  open-source LLM served by [Ollama](https://ollama.com) on `localhost`
+  (e.g. `llama3.2`) — still no internet involved; if Ollama is unreachable
+  the template engine takes over, so a draft is always produced.
 
 ## REST API
 
@@ -106,6 +113,7 @@ ai-assist:
   transcription:
     model-name: vosk-model-small-en-us-0.15   # any model from alphacephei.com/vosk/models
     preferred-device: ""       # e.g. "Stereo Mix" / "BlackHole"
+    allow-download: false      # keep false: no runtime network access
   ollama:
     enabled: false             # true = draft with a local LLM via Ollama
     model: llama3.2
@@ -114,8 +122,8 @@ ai-assist:
 ## Build & test
 
 ```bash
-mvn test      # 11 tests, no audio hardware needed
-mvn package   # executable jar in target/
+mvn test                    # tests, no audio hardware or network needed
+mvn package -Pfetch-model   # executable jar in target/ + speech model in models/
 java -jar target/ai-assist-0.1.0-SNAPSHOT.jar
 ```
 
@@ -123,5 +131,5 @@ java -jar target/ai-assist-0.1.0-SNAPSHOT.jar
 
 Java 21 · Spring Boot 3.5 · [Vosk](https://alphacephei.com/vosk/) (Apache-2.0
 offline speech recognition) · Java Sound API · Apache Commons Lang ·
-optional [Ollama](https://ollama.com) for LLM drafting · vanilla HTML/JS UI
-with the browser Web Speech API as an extra dictation path.
+optional local [Ollama](https://ollama.com) for LLM drafting · vanilla
+HTML/JS UI served by the app itself.

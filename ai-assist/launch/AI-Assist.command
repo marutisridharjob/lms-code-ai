@@ -12,7 +12,7 @@ if [ -z "$JAR" ]; then
   JAR=$(ls target/ai-assist-*.jar 2>/dev/null | head -1)
 fi
 if [ -z "$JAR" ]; then
-  echo "ai-assist jar not found. Build it first with: mvn package"
+  echo "ai-assist jar not found. Build it first with: mvn package -Pfetch-model"
   read -p "Press Enter to close..."
   exit 1
 fi

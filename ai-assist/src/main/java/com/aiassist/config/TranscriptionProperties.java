@@ -5,13 +5,15 @@ import java.nio.file.Path;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * Settings for live meeting transcription. The Vosk model is downloaded to
- * {@code modelDir} on first use unless a ready-to-use model already exists
- * there (or at an explicitly configured path).
+ * Settings for live meeting transcription. The Vosk model is loaded from
+ * local disk; the app never fetches anything at runtime unless
+ * {@code allowDownload} is explicitly enabled (off by default so the app is
+ * fully offline).
  */
 @ConfigurationProperties(prefix = "ai-assist.transcription")
 public record TranscriptionProperties(String modelDir, String modelUrl, String modelName,
-                                      float sampleRate, String preferredDevice) {
+                                      float sampleRate, String preferredDevice,
+                                      boolean allowDownload) {
 
     public TranscriptionProperties {
         if (modelDir == null || modelDir.isBlank()) {

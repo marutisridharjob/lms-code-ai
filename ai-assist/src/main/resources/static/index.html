@@ -36,7 +36,7 @@
 <body>
 <header>
   <h1>🎙️ ai-assist</h1>
-  <span>listen to your notes, draft detailed content</span>
+  <span>listen &amp; draft detailed content — fully offline, nothing leaves this machine</span>
 </header>
 <main>
   <section class="card">
@@ -45,13 +45,12 @@
     <input id="topic" placeholder="e.g. Weekly project status update">
     <div class="row">
       <button id="startSession" class="primary">Start session</button>
-      <button id="micBtn" class="secondary" disabled>🎤 Start listening</button>
     </div>
-    <label for="typedText">…or type a note and press Enter</label>
+    <label for="typedText">Type a note and press Enter (speech is transcribed locally below)</label>
     <input id="typedText" placeholder="Type what the assistant should hear" disabled>
 
-    <h2 style="margin-top:1.2rem">Live meeting capture <span class="badge">Webex / Teams</span></h2>
-    <label for="deviceSelect">Capture device (pick a loopback device to hear the meeting)</label>
+    <h2 style="margin-top:1.2rem">Live capture <span class="badge">Webex / Teams / mic — 100% local</span></h2>
+    <label for="deviceSelect">Capture device (loopback = meeting audio, mic = your voice)</label>
     <select id="deviceSelect"><option value="">System default input</option></select>
     <div class="row">
       <button id="liveBtn" class="secondary" disabled>📡 Start meeting capture</button>
@@ -88,8 +87,6 @@
 </main>
 <script>
   let sessionId = null;
-  let recognition = null;
-  let listening = false;
   let lastDraftText = '';
 
   const $ = id => document.getElementById(id);
@@ -123,7 +120,6 @@
       if (st.sessionId && (st.state === 'LISTENING' || st.state === 'PREPARING')) {
         sessionId = st.sessionId;
         $('draftBtn').disabled = false;
-        $('micBtn').disabled = false;
         $('typedText').disabled = false;
         setLive(true);
         status(st.state === 'PREPARING' ? 'Preparing speech model…' : 'Listening to meeting audio…');
@@ -149,7 +145,7 @@
     sessionId = st.sessionId;
     $('draftBtn').disabled = false;
     setLive(true);
-    status('Capturing meeting audio — first start downloads the speech model (~40 MB), give it a minute.');
+    status('Capturing audio — transcription runs locally on this machine, nothing leaves it.');
     livePollTimer = setInterval(pollLive, 2000);
   };
 
@@ -198,7 +194,6 @@
     sessionId = session.id;
     $('utterances').innerHTML = '';
     renderedCount = 0;
-    $('micBtn').disabled = false;
     $('typedText').disabled = false;
     $('draftBtn').disabled = false;
     status('Session started — speak or type your notes.');
@@ -221,24 +216,6 @@
   $('typedText').addEventListener('keydown', e => {
     if (e.key === 'Enter') { sendUtterance(e.target.value); e.target.value = ''; }
   });
-
-  $('micBtn').onclick = () => {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) { status('Speech recognition is not supported in this browser — type your notes instead.'); return; }
-    if (listening) { recognition.stop(); return; }
-    recognition = new SR();
-    recognition.continuous = true;
-    recognition.interimResults = false;
-    recognition.onresult = e => {
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) sendUtterance(e.results[i][0].transcript);
-      }
-    };
-    recognition.onstart = () => { listening = true; $('micBtn').textContent = '⏹ Stop listening'; $('micBtn').classList.add('listening'); status('Listening…'); };
-    recognition.onend = () => { listening = false; $('micBtn').textContent = '🎤 Start listening'; $('micBtn').classList.remove('listening'); status('Stopped listening.'); };
-    recognition.onerror = e => status('Speech recognition error: ' + e.error);
-    recognition.start();
-  };
 
   $('draftBtn').onclick = async () => {
     status('Drafting…');
