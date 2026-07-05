@@ -80,6 +80,9 @@ public class CompileJob extends Job {
 							project.getName(), String.join(" ", command), result.exitCode(), output)))); //$NON-NLS-1$
 			List<FixFinding> findings = FindingsParser.parseFindings(response);
 
+			if (monitor.isCanceled()) {
+				return Status.CANCEL_STATUS; // stopped — don't push results into the view
+			}
 			String summary = source + " — exit code " + result.exitCode();
 			Display.getDefault().asyncExec(() -> view.setResults(summary, findings, response));
 			return Status.OK_STATUS;

@@ -17,13 +17,12 @@ import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.jface.viewers.TableViewerColumn;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.SashForm;
+import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.graphics.Color;
-import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
-import org.eclipse.swt.widgets.Text;
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.ide.IDE;
 import org.eclipse.ui.part.ViewPart;
@@ -31,36 +30,32 @@ import org.eclipse.ui.texteditor.ITextEditor;
 
 import com.lmscode.ai.Activator;
 import com.lmscode.ai.core.FixFinding;
+import com.lmscode.ai.ui.DarkTheme;
+import com.lmscode.ai.ui.MarkdownRenderer;
 
 /**
  * LMS Response view: fix details from the AI with file name, line number,
- * severity and the concrete fix. Styled like a code editor (dark background,
- * text-editor font). While a request is running the content is grayed out, a
- * waiting message is shown and the Stop toolbar action cancels the request.
- * Double-click opens the file at the line.
+ * severity and the concrete fix, drafted as formatted rich text (headings,
+ * bullets, code blocks) on a dark editor-style surface. While a request runs
+ * the content is grayed out, a waiting message is shown and Stop cancels the
+ * request. Double-click opens the file at the line.
  */
 public class ResponseView extends ViewPart {
 
 	public static final String ID = "com.lmscode.ai.views.responseView"; //$NON-NLS-1$
 
+	private DarkTheme theme;
 	private Label statusLabel;
 	private TableViewer viewer;
-	private Text details;
+	private StyledText details;
 	private String rawResponse = ""; //$NON-NLS-1$
-
-	private Color background;
-	private Color foreground;
-	private Color dimForeground;
 
 	private Action stopAction;
 	private final List<Job> activeJobs = new ArrayList<>();
 
 	@Override
 	public void createPartControl(Composite parent) {
-		background = new Color(parent.getDisplay(), 30, 30, 30);      // editor-like dark
-		foreground = new Color(parent.getDisplay(), 212, 212, 212);   // light code text
-		dimForeground = new Color(parent.getDisplay(), 140, 140, 140);
-		Font codeFont = JFaceResources.getTextFont(); // the workbench text-editor font/size
+		theme = new DarkTheme(parent.getDisplay());
 
 		Composite root = new Composite(parent, SWT.NONE);
 		GridLayout layout = new GridLayout(1, false);
@@ -68,45 +63,46 @@ public class ResponseView extends ViewPart {
 		layout.marginHeight = 0;
 		layout.verticalSpacing = 0;
 		root.setLayout(layout);
-		root.setBackground(background);
+		root.setBackground(theme.background);
 
 		statusLabel = new Label(root, SWT.NONE);
 		statusLabel.setText(" Use the LMS Code context menu (Fix Issues, Compile, Refactor) to populate this view.");
 		statusLabel.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
-		statusLabel.setBackground(background);
-		statusLabel.setForeground(dimForeground);
-		statusLabel.setFont(codeFont);
+		statusLabel.setBackground(theme.background);
+		statusLabel.setForeground(theme.dim);
+		statusLabel.setFont(JFaceResources.getTextFont());
 
 		SashForm sash = new SashForm(root, SWT.VERTICAL);
 		sash.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-		sash.setBackground(background);
+		sash.setBackground(theme.background);
 
 		viewer = new TableViewer(sash, SWT.FULL_SELECTION | SWT.H_SCROLL | SWT.V_SCROLL);
 		viewer.getTable().setHeaderVisible(true);
 		viewer.getTable().setLinesVisible(false);
-		viewer.getTable().setBackground(background);
-		viewer.getTable().setForeground(foreground);
-		viewer.getTable().setFont(codeFont);
+		viewer.getTable().setBackground(theme.background);
+		viewer.getTable().setForeground(theme.foreground);
+		viewer.getTable().setFont(JFaceResources.getTextFont());
 		viewer.setContentProvider(ArrayContentProvider.getInstance());
 
-		column("File", 280, FixFinding::file);
-		column("Line", 60, FixFinding::lineLabel);
-		column("Severity", 90, FixFinding::severityOrEmpty);
-		column("Problem", 360, FixFinding::title);
+		column("File", 280, FixFinding::file, null);
+		column("Line", 60, FixFinding::lineLabel, null);
+		column("Severity", 90, FixFinding::severityOrEmpty, this::severityColor);
+		column("Problem", 360, FixFinding::title, null);
 
-		details = new Text(sash, SWT.MULTI | SWT.READ_ONLY | SWT.WRAP | SWT.V_SCROLL);
-		details.setBackground(background);
-		details.setForeground(foreground);
-		details.setFont(codeFont);
+		details = new StyledText(sash, SWT.MULTI | SWT.READ_ONLY | SWT.WRAP | SWT.V_SCROLL);
+		details.setBackground(theme.background);
+		details.setForeground(theme.foreground);
+		details.setFont(JFaceResources.getTextFont());
+		details.setMargins(10, 8, 10, 8);
 
 		sash.setWeights(new int[] { 55, 45 });
 
 		viewer.addSelectionChangedListener(event -> {
 			IStructuredSelection selection = viewer.getStructuredSelection();
 			if (selection.getFirstElement() instanceof FixFinding finding) {
-				details.setText(render(finding));
+				setDetails(renderMarkdown(finding));
 			} else {
-				details.setText(rawResponse);
+				setDetails(rawResponse);
 			}
 		});
 
@@ -128,33 +124,57 @@ public class ResponseView extends ViewPart {
 		getViewSite().getActionBars().getToolBarManager().add(stopAction);
 	}
 
-	private static String render(FixFinding finding) {
-		StringBuilder sb = new StringBuilder();
-		sb.append(finding.file());
+	private Color severityColor(FixFinding finding) {
+		String severity = finding.severityOrEmpty().toUpperCase();
+		if (severity.contains("CRITICAL") || severity.contains("HIGH") || severity.contains("ERROR")) { //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+			return theme.accentError;
+		}
+		if (severity.contains("MEDIUM") || severity.contains("WARN")) { //$NON-NLS-1$ //$NON-NLS-2$
+			return theme.codeFg;
+		}
+		return theme.accentAssistant;
+	}
+
+	/** Renders a finding as markdown so code snippets in "fix" draft nicely. */
+	private static String renderMarkdown(FixFinding finding) {
+		StringBuilder md = new StringBuilder();
+		md.append("### ").append(finding.file()); //$NON-NLS-1$
 		if (finding.line() > 0) {
-			sb.append(" : line ").append(finding.line());
+			md.append(" : line ").append(finding.line()); //$NON-NLS-1$
 		}
 		if (!finding.severityOrEmpty().isBlank()) {
-			sb.append("  [").append(finding.severity()).append(']');
+			md.append("  [").append(finding.severity()).append(']'); //$NON-NLS-1$
 		}
-		sb.append('\n');
+		md.append('\n');
 		if (!blank(finding.title())) {
-			sb.append('\n').append(finding.title()).append('\n');
+			md.append("\n**").append(finding.title()).append("**\n"); //$NON-NLS-1$ //$NON-NLS-2$
 		}
 		if (!blank(finding.description())) {
-			sb.append('\n').append(finding.description()).append('\n');
+			md.append('\n').append(finding.description()).append('\n');
 		}
 		if (!blank(finding.fix())) {
-			sb.append("\nFix:\n").append(finding.fix()).append('\n');
+			md.append("\n**Fix**\n"); //$NON-NLS-1$
+			if (finding.fix().contains("```")) { //$NON-NLS-1$
+				md.append(finding.fix()).append('\n');
+			} else {
+				md.append("```\n").append(finding.fix()).append("\n```\n"); //$NON-NLS-1$ //$NON-NLS-2$
+			}
 		}
-		return sb.toString();
+		return md.toString();
 	}
 
 	private static boolean blank(String s) {
 		return s == null || s.isBlank();
 	}
 
-	private void column(String title, int width, Function<FixFinding, String> accessor) {
+	private void setDetails(String markdown) {
+		details.setText(""); //$NON-NLS-1$
+		MarkdownRenderer.append(details, markdown == null ? "" : markdown, theme); //$NON-NLS-1$
+		details.setTopIndex(0);
+	}
+
+	private void column(String title, int width, Function<FixFinding, String> accessor,
+			Function<FixFinding, Color> colorProvider) {
 		TableViewerColumn column = new TableViewerColumn(viewer, SWT.LEAD);
 		column.getColumn().setText(title);
 		column.getColumn().setWidth(width);
@@ -170,12 +190,15 @@ public class ResponseView extends ViewPart {
 
 			@Override
 			public Color getBackground(Object element) {
-				return background;
+				return theme.background;
 			}
 
 			@Override
 			public Color getForeground(Object element) {
-				return foreground;
+				if (colorProvider != null && element instanceof FixFinding finding) {
+					return colorProvider.apply(finding);
+				}
+				return theme.foreground;
 			}
 		});
 	}
@@ -210,29 +233,31 @@ public class ResponseView extends ViewPart {
 	@Override
 	public void dispose() {
 		stopAll();
-		if (background != null) {
-			background.dispose();
-		}
-		if (foreground != null) {
-			foreground.dispose();
-		}
-		if (dimForeground != null) {
-			dimForeground.dispose();
+		if (theme != null) {
+			theme.dispose();
 		}
 		super.dispose();
 	}
 
 	/* ===== Busy / stop handling (UI thread) ===== */
 
+	/** True once the view has been closed — late job callbacks must not touch widgets. */
+	private boolean isClosed() {
+		return statusLabel == null || statusLabel.isDisposed();
+	}
+
 	/** Enters the waiting state and registers the job so Stop can cancel it. */
 	public void setBusy(String what, Job job) {
+		if (isClosed()) {
+			return;
+		}
 		if (job != null) {
 			activeJobs.add(job);
 		}
 		statusLabel.setText(" Waiting for response — " + what + " …");
-		statusLabel.setForeground(foreground);
-		details.setText("Waiting for response from the AI …\n\nUse the Stop button in this view's toolbar to cancel.");
+		statusLabel.setForeground(theme.foreground);
 		viewer.setInput(List.of());
+		setDetails("Waiting for response from the AI …\n\nUse the **Stop** button in this view's toolbar to cancel.");
 		setWaiting(true);
 		statusLabel.getParent().layout();
 	}
@@ -242,10 +267,10 @@ public class ResponseView extends ViewPart {
 			job.cancel();
 		}
 		activeJobs.clear();
-		if (!statusLabel.isDisposed()) {
+		if (statusLabel != null && !statusLabel.isDisposed()) {
 			statusLabel.setText(" Request stopped.");
-			statusLabel.setForeground(dimForeground);
-			details.setText(""); //$NON-NLS-1$
+			statusLabel.setForeground(theme.dim);
+			setDetails(""); //$NON-NLS-1$
 			setWaiting(false);
 			statusLabel.getParent().layout();
 		}
@@ -271,30 +296,36 @@ public class ResponseView extends ViewPart {
 	/* ===== Results (called by the jobs via Display.asyncExec) ===== */
 
 	public void setResults(String source, List<FixFinding> findings, String raw) {
+		if (isClosed()) {
+			return; // view closed while the job was running
+		}
 		activeJobs.clear();
 		setWaiting(false);
 		bringToFront();
 		rawResponse = raw == null ? "" : raw; //$NON-NLS-1$
 		viewer.setInput(findings);
-		statusLabel.setForeground(dimForeground);
+		statusLabel.setForeground(theme.dim);
 		if (findings.isEmpty()) {
 			statusLabel.setText(" " + source + ": no structured findings (raw response below).");
-			details.setText(rawResponse);
+			setDetails(rawResponse);
 		} else {
 			statusLabel.setText(" " + source + ": " + findings.size()
 					+ " finding(s). Select a row for details, double-click to open the file at the line.");
-			details.setText(""); //$NON-NLS-1$
+			setDetails(""); //$NON-NLS-1$
 		}
 		statusLabel.getParent().layout();
 	}
 
 	public void setError(String source, String message) {
+		if (isClosed()) {
+			return; // view closed while the job was running
+		}
 		activeJobs.clear();
 		setWaiting(false);
 		bringToFront();
 		statusLabel.setText(" " + source + ": failed.");
-		statusLabel.setForeground(foreground);
-		details.setText(message == null ? "Unknown error" : message);
+		statusLabel.setForeground(theme.accentError);
+		setDetails(message == null ? "Unknown error" : message);
 		statusLabel.getParent().layout();
 	}
 }

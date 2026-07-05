@@ -26,6 +26,18 @@ with full fix details below; double-click a row to open the file at that line.
 Dependency-management files (pom.xml, Gradle scripts) are always analyzed for
 vulnerable or outdated dependencies as part of Fix Issues and Compile.
 
+### Look & feel
+
+All LMS views share a dark, editor-style surface (VS Code-inspired palette,
+rendered in your workbench text-editor font). Responses are drafted as rich
+text — headings, bullet lists, `inline code` and fenced code blocks are
+rendered with syntax-toned colors instead of raw text — via a lightweight
+pure-SWT markdown renderer (no embedded browser). Chat sends on **Enter**
+(Shift+Enter for a newline), shows an animated "LMS is thinking ●○○"
+indicator while waiting, and severity columns are color-coded. The whole
+plugin remains a single ~300 KB bundle with no dependencies beyond the
+Eclipse platform.
+
 ## Configuration
 
 `Window → Preferences → LMS Code AI`:

@@ -53,6 +53,9 @@ public class DependencyAnalysisJob extends Job {
 			String response = client.chat(Prompts.DEPENDENCY_SYSTEM,
 					List.of(ChatMessage.user(Prompts.dependencyUser(label, content))));
 			List<DependencyFinding> findings = parse(response);
+			if (monitor.isCanceled()) {
+				return Status.CANCEL_STATUS; // stopped — don't push results into the view
+			}
 			Display.getDefault().asyncExec(() -> view.setResults(label, findings, response));
 			return Status.OK_STATUS;
 		} catch (Exception e) {

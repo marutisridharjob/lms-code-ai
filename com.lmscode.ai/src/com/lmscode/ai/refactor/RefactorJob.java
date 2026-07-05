@@ -113,6 +113,9 @@ public class RefactorJob extends Job {
 			progress.worked(1);
 		}
 
+		if (monitor.isCanceled()) {
+			return Status.CANCEL_STATUS; // stopped — don't push results into the view
+		}
 		String rawText = raw.toString();
 		Display.getDefault().asyncExec(() -> view.setResults(source, summary, rawText));
 		return problems.getChildren().length == 0 ? Status.OK_STATUS : problems;
