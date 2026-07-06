@@ -189,12 +189,29 @@ public final class LmsCodeIntegrationTest {
 				settings("openai", "http://127.0.0.1:" + port + "/", 9999).baseUrl());
 		check("url: path prefix preserved", "http://127.0.0.1:" + port + "/gateway",
 				settings("openai", "http://127.0.0.1:" + port + "/gateway", 9999).baseUrl());
-		check("url: port inserted before path", "http://gw:1234/lms",
+		check("url: full URL without port respected as-is", "http://gw/lms",
 				settings("openai", "http://gw/lms", 1234).baseUrl());
 		check("url: https kept", "https://secure.example:8443",
 				settings("openai", "https://secure.example:8443", 1234).baseUrl());
+		check("url: user's mac-micro example", "https://mac-micro.local:1234",
+				settings("openai", "https://mac-micro.local:1234", 9999).baseUrl());
 		check("url: empty host falls back to localhost", "http://localhost:1234",
 				settings("openai", "", 1234).baseUrl());
+
+		// The URI (API base path) field
+		check("uri: empty uses provider default", "/v1/chat/completions",
+				settings("openai", "h", 1, "").apiPath("/v1", "/chat/completions"));
+		check("uri: /api/v1 overrides default", "/api/v1/chat/completions",
+				settings("openai", "h", 1, "/api/v1").apiPath("/v1", "/chat/completions"));
+		check("uri: normalized (no leading slash, trailing slash)", "/api/v1/chat",
+				settings("lmstudio", "h", 1, "api/v1/").apiPath("/api/v1", "/chat"));
+
+		// End-to-end: URI field routes an OpenAI-compatible client through /gateway/v1
+		AiClient viaUri = AiClientFactory.create(
+				settings("openai", "http://127.0.0.1:" + port, 0, "/gateway/v1"));
+		String uriReply = viaUri.chat(null, List.of(ChatMessage.user("via uri")));
+		check("uri: chat through configured base path", "openai-reply: via uri".equals(uriReply),
+				"got " + uriReply);
 
 		// End-to-end through a reverse-proxy style path prefix
 		AiClient proxied = AiClientFactory.create(
@@ -211,7 +228,7 @@ public final class LmsCodeIntegrationTest {
 	private static void errorHandling(int port) throws Exception {
 		// Timeout -> "model is slow" message (6s budget vs 8s server sleep)
 		AiClient slow = AiClientFactory.create(new AiClientSettings(
-				"openai", "http://127.0.0.1:" + port + "/slow", 0, "", "apikey", "m", 6, 0, 0.2));
+				"openai", "http://127.0.0.1:" + port + "/slow", 0, "", "", "apikey", "m", 6, 0, 0.2));
 		try {
 			slow.chat(null, List.of(ChatMessage.user("hi")));
 			fail("timeout: expected AiClientException");
@@ -365,11 +382,15 @@ public final class LmsCodeIntegrationTest {
 	private static AiClient client(String provider, String host, int port, String apiKey, String model,
 			int timeoutSeconds) {
 		return AiClientFactory.create(new AiClientSettings(
-				provider, host, port, apiKey, "apikey", model, timeoutSeconds, 0, 0.2));
+				provider, host, port, "", apiKey, "apikey", model, timeoutSeconds, 0, 0.2));
 	}
 
 	private static AiClientSettings settings(String provider, String host, int port) {
-		return new AiClientSettings(provider, host, port, "", "apikey", "test-model", 60, 0, 0.2);
+		return settings(provider, host, port, "");
+	}
+
+	private static AiClientSettings settings(String provider, String host, int port, String basePath) {
+		return new AiClientSettings(provider, host, port, basePath, "", "apikey", "test-model", 60, 0, 0.2);
 	}
 
 	private static void check(String name, boolean condition, String detail) {

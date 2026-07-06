@@ -64,9 +64,12 @@ public class AnthropicClient extends AbstractHttpAiClient {
 				"anthropic-version", ANTHROPIC_VERSION); //$NON-NLS-1$
 	}
 
+	/** Default API base URI when the preference is empty. */
+	private static final String DEFAULT_BASE = "/v1"; //$NON-NLS-1$
+
 	@Override
 	public List<String> listModels() throws AiClientException {
-		JsonObject response = getJson("/v1/models"); //$NON-NLS-1$
+		JsonObject response = getJson(settings.apiPath(DEFAULT_BASE, "/models")); //$NON-NLS-1$
 		List<String> models = new ArrayList<>();
 		JsonElement data = response.get("data"); //$NON-NLS-1$
 		if (data != null && data.isJsonArray()) {
@@ -102,7 +105,7 @@ public class AnthropicClient extends AbstractHttpAiClient {
 		}
 		body.add("messages", wireMessages); //$NON-NLS-1$
 
-		JsonObject response = postJson("/v1/messages", body); //$NON-NLS-1$
+		JsonObject response = postJson(settings.apiPath(DEFAULT_BASE, "/messages"), body); //$NON-NLS-1$
 		JsonElement content = response.get("content"); //$NON-NLS-1$
 		if (content != null && content.isJsonArray()) {
 			StringBuilder sb = new StringBuilder();

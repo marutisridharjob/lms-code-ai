@@ -32,9 +32,12 @@ public class OpenAiCompatibleClient extends AbstractHttpAiClient {
 		return Map.of("Authorization", "Bearer " + key); //$NON-NLS-1$ //$NON-NLS-2$
 	}
 
+	/** Default API base URI when the preference is empty. */
+	private static final String DEFAULT_BASE = "/v1"; //$NON-NLS-1$
+
 	@Override
 	public List<String> listModels() throws AiClientException {
-		JsonObject response = getJson("/v1/models"); //$NON-NLS-1$
+		JsonObject response = getJson(settings.apiPath(DEFAULT_BASE, "/models")); //$NON-NLS-1$
 		List<String> models = new ArrayList<>();
 		JsonElement data = response.get("data"); //$NON-NLS-1$
 		if (data != null && data.isJsonArray()) {
@@ -70,7 +73,7 @@ public class OpenAiCompatibleClient extends AbstractHttpAiClient {
 		}
 		body.addProperty("stream", false); //$NON-NLS-1$
 
-		JsonObject response = postJson("/v1/chat/completions", body); //$NON-NLS-1$
+		JsonObject response = postJson(settings.apiPath(DEFAULT_BASE, "/chat/completions"), body); //$NON-NLS-1$
 		JsonElement choices = response.get("choices"); //$NON-NLS-1$
 		if (choices != null && choices.isJsonArray() && !choices.getAsJsonArray().isEmpty()) {
 			JsonElement first = choices.getAsJsonArray().get(0);

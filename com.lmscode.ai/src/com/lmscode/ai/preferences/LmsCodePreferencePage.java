@@ -64,7 +64,7 @@ public class LmsCodePreferencePage extends PreferencePage implements IWorkbenchP
 
 	private Combo providerCombo;
 	private Text hostText;
-	private Text portText;
+	private Text basePathText;
 	private Text apiKeyText;
 	private Combo authCombo;
 	private Combo modelCombo;
@@ -92,12 +92,18 @@ public class LmsCodePreferencePage extends PreferencePage implements IWorkbenchP
 
 		Group server = group(root, "Server");
 		providerCombo = labeledCombo(server, "Provider / protocol:", PROVIDER_LABELS);
-		hostText = labeledText(server, "Endpoint (host, IP or full URL):", SWT.BORDER);
-		hostText.setToolTipText("Examples: 192.168.1.36 · mac-micro.local · http://192.168.1.36:1234"
-				+ " · https://my-gateway:8443/lmstudio (path prefixes are preserved)."
-				+ " The Port field is used only when the URL does not already include a port.");
-		portText = labeledText(server, "Port:", SWT.BORDER);
-		apiKeyText = labeledText(server, "API key (optional for local servers):", SWT.BORDER | SWT.PASSWORD);
+		hostText = labeledText(server, "Host:", SWT.BORDER);
+		hostText.setMessage("https://mac-micro.local:1234");
+		hostText.setToolTipText("Full URL of the LM Studio (or compatible) server, e.g."
+				+ " http://192.168.1.36:1234 or https://mac-micro.local:1234."
+				+ " A bare host/IP is also accepted (port 1234 is assumed).");
+		basePathText = labeledText(server, "URI (API base path):", SWT.BORDER);
+		basePathText.setMessage("/api/v1");
+		basePathText.setToolTipText("Base path prepended to every endpoint, e.g. /api/v1 ->"
+				+ " {host}/api/v1/chat and {host}/api/v1/models."
+				+ " Leave empty for the provider default (/v1 for OpenAI-compatible and Anthropic,"
+				+ " /api/v1 for LM Studio native).");
+		apiKeyText = labeledText(server, "API key (optional):", SWT.BORDER | SWT.PASSWORD);
 		authCombo = labeledCombo(server, "Anthropic auth:", AUTH_LABELS);
 		authCombo.setToolTipText("'Claude Code login' reads the OAuth token stored by Claude Code"
 				+ " (macOS Keychain 'Claude Code-credentials' or ~/.claude/.credentials.json)."
@@ -116,7 +122,7 @@ public class LmsCodePreferencePage extends PreferencePage implements IWorkbenchP
 		claudeCloudButton.addListener(SWT.Selection, e -> {
 			select(providerCombo, PROVIDER_VALUES, PreferenceConstants.PROVIDER_ANTHROPIC);
 			hostText.setText("https://api.anthropic.com"); //$NON-NLS-1$
-			portText.setText("443"); //$NON-NLS-1$
+			basePathText.setText(""); //$NON-NLS-1$ — provider default /v1
 			select(authCombo, AUTH_VALUES, PreferenceConstants.AUTH_CLAUDE_CODE);
 		});
 
@@ -176,7 +182,7 @@ public class LmsCodePreferencePage extends PreferencePage implements IWorkbenchP
 	private void loadFrom(IPreferenceStore store) {
 		select(providerCombo, PROVIDER_VALUES, store.getString(PreferenceConstants.P_PROVIDER));
 		hostText.setText(store.getString(PreferenceConstants.P_HOST));
-		portText.setText(Integer.toString(store.getInt(PreferenceConstants.P_PORT)));
+		basePathText.setText(store.getString(PreferenceConstants.P_BASE_PATH));
 		apiKeyText.setText(store.getString(PreferenceConstants.P_API_KEY));
 		select(authCombo, AUTH_VALUES, store.getString(PreferenceConstants.P_ANTHROPIC_AUTH));
 		modelCombo.setText(store.getString(PreferenceConstants.P_MODEL));
@@ -203,7 +209,7 @@ public class LmsCodePreferencePage extends PreferencePage implements IWorkbenchP
 		IPreferenceStore store = getPreferenceStore();
 		select(providerCombo, PROVIDER_VALUES, store.getDefaultString(PreferenceConstants.P_PROVIDER));
 		hostText.setText(store.getDefaultString(PreferenceConstants.P_HOST));
-		portText.setText(Integer.toString(store.getDefaultInt(PreferenceConstants.P_PORT)));
+		basePathText.setText(store.getDefaultString(PreferenceConstants.P_BASE_PATH));
 		apiKeyText.setText(store.getDefaultString(PreferenceConstants.P_API_KEY));
 		select(authCombo, AUTH_VALUES, store.getDefaultString(PreferenceConstants.P_ANTHROPIC_AUTH));
 		modelCombo.setText(store.getDefaultString(PreferenceConstants.P_MODEL));
@@ -218,11 +224,6 @@ public class LmsCodePreferencePage extends PreferencePage implements IWorkbenchP
 
 	@Override
 	public boolean performOk() {
-		int port = parseInt(portText.getText(), -1);
-		if (port <= 0 || port > 65535) {
-			setErrorMessage("Port must be a number between 1 and 65535.");
-			return false;
-		}
 		int waitMinutes = parseInt(timeoutText.getText(), -1);
 		if (waitMinutes <= 0 || waitMinutes > 120) {
 			setErrorMessage("Wait time must be between 1 and 120 minutes.");
@@ -238,7 +239,7 @@ public class LmsCodePreferencePage extends PreferencePage implements IWorkbenchP
 		IPreferenceStore store = getPreferenceStore();
 		store.setValue(PreferenceConstants.P_PROVIDER, PROVIDER_VALUES[Math.max(0, providerCombo.getSelectionIndex())]);
 		store.setValue(PreferenceConstants.P_HOST, hostText.getText().trim());
-		store.setValue(PreferenceConstants.P_PORT, port);
+		store.setValue(PreferenceConstants.P_BASE_PATH, normalizeBasePath(basePathText.getText()));
 		store.setValue(PreferenceConstants.P_API_KEY, apiKeyText.getText().trim());
 		store.setValue(PreferenceConstants.P_ANTHROPIC_AUTH, AUTH_VALUES[Math.max(0, authCombo.getSelectionIndex())]);
 		store.setValue(PreferenceConstants.P_MODEL, modelCombo.getText().trim());
@@ -260,12 +261,28 @@ public class LmsCodePreferencePage extends PreferencePage implements IWorkbenchP
 		}
 	}
 
+	/** "/api/v1/" or "api/v1" → "/api/v1"; empty stays empty (= provider default). */
+	private static String normalizeBasePath(String raw) {
+		String p = raw == null ? "" : raw.trim(); //$NON-NLS-1$
+		if (p.isEmpty()) {
+			return ""; //$NON-NLS-1$
+		}
+		if (!p.startsWith("/")) { //$NON-NLS-1$
+			p = "/" + p; //$NON-NLS-1$
+		}
+		while (p.endsWith("/")) { //$NON-NLS-1$
+			p = p.substring(0, p.length() - 1);
+		}
+		return p;
+	}
+
 	/** Settings built from the current (possibly unsaved) field values. */
 	private AiClientSettings settingsFromFields() {
 		return new AiClientSettings(
 				PROVIDER_VALUES[Math.max(0, providerCombo.getSelectionIndex())],
 				hostText.getText().trim(),
-				parseInt(portText.getText(), 1234),
+				getPreferenceStore().getInt(PreferenceConstants.P_PORT),
+				normalizeBasePath(basePathText.getText()),
 				apiKeyText.getText().trim(),
 				AUTH_VALUES[Math.max(0, authCombo.getSelectionIndex())],
 				modelCombo.getText().trim(),

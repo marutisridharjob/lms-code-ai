@@ -44,9 +44,9 @@ Eclipse platform.
 
 | Setting | Default | Notes |
 |---|---|---|
-| Provider / protocol | OpenAI-compatible | See endpoint mapping below |
-| Host | `localhost` | Bare host/IP (`192.168.1.36`) or full URL (`https://gateway:8443`) |
-| Port | `1234` | LM Studio's default; ignored if the host URL already has a port |
+| Provider / protocol | OpenAI-compatible | Determines payload shape and default URI (see mapping below) |
+| Host | `localhost` | Full URL, e.g. `https://mac-micro.local:1234` or `http://192.168.1.36:1234` (path prefixes allowed). A bare host/IP assumes port 1234. |
+| URI (API base path) | empty | Base path prepended to every endpoint, e.g. `/api/v1` → `{host}/api/v1/chat`. Empty = provider default (`/v1`, or `/api/v1` for LM Studio native). |
 | API key | empty | Optional for local LM Studio; sent as `Authorization: Bearer` (OpenAI/LM Studio) or `x-api-key` (Anthropic) |
 | Model | empty | Use **Fetch Models** to populate from the server |
 | Timeout / Max tokens / Temperature | 120 s / 0 / 0.2 | `0` max tokens = server default (Anthropic falls back to 4096, which its API requires) |
@@ -57,11 +57,14 @@ dialog, so you can verify before saving.
 
 ### Provider → endpoint mapping
 
+With an empty URI field the provider defaults apply; a configured URI replaces
+the base path (`/v1` / `/api/v1`) while the endpoint suffixes stay:
+
 | Provider | List models | Chat |
 |---|---|---|
-| OpenAI-compatible (LM Studio default) | `GET /v1/models` | `POST /v1/chat/completions` |
-| LM Studio native REST | `GET /api/v1/models` | `POST /api/v1/chat` |
-| Anthropic / Claude | `GET /v1/models` | `POST /v1/messages` (`x-api-key`, `anthropic-version: 2023-06-01`) |
+| OpenAI-compatible (LM Studio default) | `GET {uri:/v1}/models` | `POST {uri:/v1}/chat/completions` |
+| LM Studio native REST | `GET {uri:/api/v1}/models` | `POST {uri:/api/v1}/chat` |
+| Anthropic / Claude | `GET {uri:/v1}/models` | `POST {uri:/v1}/messages` (`x-api-key`, `anthropic-version: 2023-06-01`) |
 
 The client layer is a small interface (`AiClient`), so additional providers are
 one class + one factory case away.

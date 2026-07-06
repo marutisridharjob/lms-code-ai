@@ -13,6 +13,7 @@ public class PreferenceInitializer extends AbstractPreferenceInitializer {
 		store.setDefault(PreferenceConstants.P_PROVIDER, PreferenceConstants.PROVIDER_OPENAI);
 		store.setDefault(PreferenceConstants.P_HOST, "localhost"); //$NON-NLS-1$
 		store.setDefault(PreferenceConstants.P_PORT, 1234);
+		store.setDefault(PreferenceConstants.P_BASE_PATH, ""); //$NON-NLS-1$
 		store.setDefault(PreferenceConstants.P_API_KEY, ""); //$NON-NLS-1$
 		store.setDefault(PreferenceConstants.P_MODEL, ""); //$NON-NLS-1$
 		store.setDefault(PreferenceConstants.P_WAIT_MINUTES, 3);

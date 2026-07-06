@@ -12,8 +12,10 @@ public final class PreferenceConstants {
 	public static final String P_PROVIDER = "provider"; //$NON-NLS-1$
 	/** Host name or IP (optionally with scheme, e.g. http://192.168.1.36). */
 	public static final String P_HOST = "host"; //$NON-NLS-1$
-	/** Server port, e.g. 1234 for LM Studio. */
+	/** Fallback port used only when the host is entered without a scheme or port. */
 	public static final String P_PORT = "port"; //$NON-NLS-1$
+	/** API base URI/path, e.g. "/api/v1"; empty = the provider's default. */
+	public static final String P_BASE_PATH = "apiBasePath"; //$NON-NLS-1$
 	/** API key / token. Optional for local LM Studio. */
 	public static final String P_API_KEY = "apiKey"; //$NON-NLS-1$
 	/** Model identifier sent with chat requests. */

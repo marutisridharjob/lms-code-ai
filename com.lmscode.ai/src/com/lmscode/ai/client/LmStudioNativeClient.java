@@ -39,9 +39,12 @@ public class LmStudioNativeClient extends AbstractHttpAiClient {
 		return Map.of("Authorization", "Bearer " + key); //$NON-NLS-1$ //$NON-NLS-2$
 	}
 
+	/** Default API base URI when the preference is empty. */
+	private static final String DEFAULT_BASE = "/api/v1"; //$NON-NLS-1$
+
 	@Override
 	public List<String> listModels() throws AiClientException {
-		JsonObject response = getJson("/api/v1/models"); //$NON-NLS-1$
+		JsonObject response = getJson(settings.apiPath(DEFAULT_BASE, "/models")); //$NON-NLS-1$
 		List<String> models = new ArrayList<>();
 		JsonElement list = response.get("data"); //$NON-NLS-1$
 		if (list == null || !list.isJsonArray()) {
@@ -117,7 +120,7 @@ public class LmStudioNativeClient extends AbstractHttpAiClient {
 	}
 
 	private String send(JsonObject body) throws AiClientException {
-		JsonObject response = postJson("/api/v1/chat", body); //$NON-NLS-1$
+		JsonObject response = postJson(settings.apiPath(DEFAULT_BASE, "/chat"), body); //$NON-NLS-1$
 		String content = extractContent(response);
 		if (content != null && !content.isBlank()) {
 			return content;
