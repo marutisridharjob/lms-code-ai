@@ -136,11 +136,25 @@ rules automatically.
   rewriting stay on the Editor and Compose tabs.
 
 Whisper runs 100% locally on the CPU; its native libraries are bundled in
-the jar. Drop a model file — `ggml-base.en.bin` (~142 MB, recommended),
-`ggml-tiny.en.bin` (~75 MB, fastest), or `ggml-small.en.bin` (~466 MB, most
-accurate) from
-[huggingface.co/ggerganov/whisper.cpp](https://huggingface.co/ggerganov/whisper.cpp/tree/main)
-— into the app folder, the same place as the Vosk model.
+the jar. Drop one English model file (open source, MIT) into the app folder,
+the same place as the Vosk model — the app picks up any `ggml-*.bin` it finds:
+
+| Model file | Size | Notes | Download |
+|---|---|---|---|
+| `ggml-tiny.en.bin` | ~75 MB | Fastest, lowest accuracy | [download](https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.en.bin) |
+| `ggml-base.en.bin` | ~142 MB | **Recommended** — good balance | [download](https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin) |
+| `ggml-small.en.bin` | ~466 MB | Most accurate of the practical set | [download](https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en.bin) |
+| `ggml-medium.en.bin` | ~1.5 GB | Highest accuracy, slower on CPU | [download](https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.en.bin) |
+
+Or download from the command line straight into the app folder:
+
+```bash
+curl -L -o ggml-base.en.bin \
+  https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin
+```
+
+Browse every model (including multilingual `ggml-*.bin` variants) at
+[huggingface.co/ggerganov/whisper.cpp](https://huggingface.co/ggerganov/whisper.cpp/tree/main).
 
 Nothing is written to disk until Stop (or a confirmed save-on-close).
 
