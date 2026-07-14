@@ -1,5 +1,6 @@
 target/
-models/
+models/*.bin
+models/*.partial
 drafts/
 *.log
 .idea/

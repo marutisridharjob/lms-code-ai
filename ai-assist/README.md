@@ -136,25 +136,21 @@ rules automatically.
   rewriting stay on the Editor and Compose tabs.
 
 Whisper runs 100% locally on the CPU; its native libraries are bundled in
-the jar. Drop one English model file (open source, MIT) into the app folder,
-the same place as the Vosk model — the app picks up any `ggml-*.bin` it finds:
-
-| Model file | Size | Notes | Download |
-|---|---|---|---|
-| `ggml-tiny.en.bin` | ~75 MB | Fastest, lowest accuracy | [download](https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.en.bin) |
-| `ggml-base.en.bin` | ~142 MB | **Recommended** — good balance | [download](https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin) |
-| `ggml-small.en.bin` | ~466 MB | Most accurate of the practical set | [download](https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en.bin) |
-| `ggml-medium.en.bin` | ~1.5 GB | Highest accuracy, slower on CPU | [download](https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.en.bin) |
-
-Or download from the command line straight into the app folder:
+the jar. It needs one `ggml-*.bin` model file, which is **not** committed to
+this repo — the models are 142 MB – 1.5 GB, over GitHub's 100 MB per-file
+limit. Fetch one with the scripts in the [`models/`](models/) folder (no
+Hugging Face account needed; they pull from a public GitHub mirror):
 
 ```bash
-curl -L -o ggml-base.en.bin \
-  https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin
+cd models
+./download-models.sh        # fast + accurate (base + small)   — Windows: download-models.bat
+./download-models.sh all    # also fetch medium (1.5 GB, most accurate)
 ```
 
-Browse every model (including multilingual `ggml-*.bin` variants) at
-[huggingface.co/ggerganov/whisper.cpp](https://huggingface.co/ggerganov/whisper.cpp/tree/main).
+Keep the `models/` folder next to `ai-assist-<version>.jar` and the app finds
+the model automatically on Stop. See [`models/README.md`](models/README.md)
+for the model comparison, checksums/trust notes, and the official Hugging Face
+source.
 
 Nothing is written to disk until Stop (or a confirmed save-on-close).
 
