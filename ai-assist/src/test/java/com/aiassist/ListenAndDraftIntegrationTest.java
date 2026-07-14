@@ -18,9 +18,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {
-                // keep tests hands-off: no audio capture, no browser, no scheduling side effects
+                // keep tests hands-off: no audio capture, no window, no scheduling side effects
                 "ai-assist.auto.start-capture=false",
-                "ai-assist.auto.open-browser=false",
                 "ai-assist.output.dir=target/test-drafts"
         })
 class ListenAndDraftIntegrationTest {
@@ -78,11 +77,14 @@ class ListenAndDraftIntegrationTest {
         java.nio.file.Path saved = java.nio.file.Path.of(draft.savedTo());
         assertThat(saved).exists();
         assertThat(saved.getFileName().toString())
-                .matches("\\d{4}-\\d{2}-\\d{2}_\\d{2}-\\d{2}-\\d{2}_quarterly-review\\.md");
+                .matches("\\d{4}-\\d{2}-\\d{2}_\\d{2}-\\d{2}-\\d{2}_quarterly-review\\.rtf");
         assertThat(saved).content()
-                .contains("# Quarterly review")
+                .contains("Quarterly review")
                 .contains("Revenue grew twelve percent")
-                .contains("hire two more engineers");
+                .contains("hire two more engineers")
+                // the saved notes always end with the source-attributed transcript
+                .contains("Full transcript (who said what)")
+                .contains("[user] Revenue grew twelve percent over the previous quarter.");
 
         // The session is now read-only and cannot be ended twice.
         ResponseEntity<String> lateUtterance = rest.postForEntity("/api/sessions/{id}/utterances",
@@ -217,9 +219,13 @@ class ListenAndDraftIntegrationTest {
     }
 
     @Test
-    void liveDraftIsEmptyBeforeAnyMeeting() {
-        ResponseEntity<String> response = rest.getForEntity("/api/live/draft", String.class);
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    void pausingWhenIdleIsSafeAndResumingWithoutAPauseIsRejected() {
+        ResponseEntity<Map> paused = rest.postForEntity("/api/live/pause", null, Map.class);
+        assertThat(paused.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(paused.getBody().get("state")).isEqualTo("IDLE");
+
+        ResponseEntity<String> resumed = rest.postForEntity("/api/live/resume", null, String.class);
+        assertThat(resumed.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
     }
 
     @Test

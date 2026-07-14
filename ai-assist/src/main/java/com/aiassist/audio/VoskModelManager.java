@@ -19,27 +19,214 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
- * Locates the Vosk speech model on local disk. The app is offline by
- * default: the model must already be present (unzipped from
- * https://alphacephei.com/vosk/models, fetched once at build time via
- * {@code mvn package -Pfetch-model}, or copied from another machine).
- * Runtime download only happens when explicitly enabled with
- * {@code ai-assist.transcription.allow-download=true}.
+ * Locates the offline English speech model. Resolution order, all local:
+ * an unpacked model on disk ({@code ./models} or the configured directory),
+ * then the copy embedded inside the application jar at build time
+ * ({@code mvn package -Pfetch-model}), which is extracted once to the model
+ * directory. The app never touches the network unless
+ * {@code ai-assist.transcription.allow-download=true} is explicitly set.
  */
 @Service
 public class VoskModelManager {
 
     private static final Logger log = LoggerFactory.getLogger(VoskModelManager.class);
+    private static final String EMBEDDED_MODEL_RESOURCE = "/vosk-model.zip";
 
     private final TranscriptionProperties properties;
+    private final java.util.Set<String> unpacking = java.util.concurrent.ConcurrentHashMap.newKeySet();
+    private final java.util.concurrent.atomic.AtomicBoolean scanning =
+            new java.util.concurrent.atomic.AtomicBoolean();
 
     public VoskModelManager(TranscriptionProperties properties) {
         this.properties = properties;
+        // Users drop downloaded model .zips next to the jar; unpack them
+        // into ./models in the background so they appear in the dropdown.
+        rescanDroppedZips();
+    }
+
+    /**
+     * Unpacks any newly dropped model zips in the background. Also invoked
+     * every time the model dropdown opens, so zips added while the app is
+     * running are picked up without a restart.
+     */
+    public void rescanDroppedZips() {
+        if (!scanning.compareAndSet(false, true)) {
+            return;
+        }
+        Thread unzipper = new Thread(() -> {
+            try {
+                unpackDroppedZips();
+            } finally {
+                scanning.set(false);
+            }
+        }, "model-unzip");
+        unzipper.setDaemon(true);
+        unzipper.start();
+    }
+
+    private static String topLevelDirOf(Path zip) {
+        try (ZipInputStream zis = new ZipInputStream(Files.newInputStream(zip))) {
+            ZipEntry first = zis.getNextEntry();
+            if (first != null && first.getName().contains("/")) {
+                return first.getName().substring(0, first.getName().indexOf('/'));
+            }
+        } catch (IOException ignored) {
+            // unreadable zip; skip it
+        }
+        return null;
+    }
+
+    /** Directory containing the running jar (falls back to the working dir). */
+    private static Path appHome() {
+        String classPath = System.getProperty("java.class.path", "");
+        if (!classPath.contains(java.io.File.pathSeparator) && classPath.endsWith(".jar")) {
+            Path parent = Path.of(classPath).toAbsolutePath().getParent();
+            if (parent != null) {
+                return parent;
+            }
+        }
+        return Path.of("").toAbsolutePath();
+    }
+
+    /** Everywhere a user might reasonably put a model folder. */
+    private static java.util.List<Path> modelRoots() {
+        return java.util.List.copyOf(new java.util.LinkedHashSet<>(java.util.List.of(
+                appHome().resolve("models"), appHome(),
+                Path.of("models").toAbsolutePath(), Path.of("").toAbsolutePath())));
+    }
+
+    /** Same locations, shared with the Whisper model lookup. */
+    static java.util.List<Path> modelSearchRoots() {
+        return modelRoots();
+    }
+
+    private void unpackDroppedZips() {
+        Path target = appHome().resolve("models");
+        for (Path root : modelRoots()) {
+            if (!Files.isDirectory(root)) {
+                continue;
+            }
+            try (var files = Files.list(root)) {
+                for (Path zip : files.filter(p -> {
+                    String n = p.getFileName().toString().toLowerCase(java.util.Locale.ROOT);
+                    return n.contains("vosk-model") && n.endsWith(".zip");
+                }).toList()) {
+                    // The model folder name comes from inside the zip, so a
+                    // renamed download (e.g. "... (1).zip") still works.
+                    String dirName = topLevelDirOf(zip);
+                    if (dirName == null) {
+                        continue;
+                    }
+                    boolean alreadyUnpacked = false;
+                    for (Path candidate : modelRoots()) {
+                        if (isModelPresent(candidate.resolve(dirName))) {
+                            alreadyUnpacked = true;
+                            break;
+                        }
+                    }
+                    if (alreadyUnpacked) {
+                        continue;
+                    }
+                    log.info("Unpacking dropped model {} into {} (large models take a minute)...", zip, target);
+                    unpacking.add(dirName);
+                    try {
+                        Files.createDirectories(target);
+                        try (InputStream in = Files.newInputStream(zip)) {
+                            unzip(in, target);
+                        }
+                    } finally {
+                        unpacking.remove(dirName);
+                    }
+                    log.info("Model {} ready; reopen the model dropdown to pick it", dirName);
+                }
+            } catch (IOException e) {
+                log.warn("Could not unpack dropped model zips in {}: {}", root, e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Models the user can pick from: the built-in default plus any unpacked
+     * Vosk model folder found in ./models next to the app.
+     */
+    /** First available model — the default until the user picks another. */
+    public String defaultModelName() {
+        var available = listAvailableModels();
+        return available.isEmpty() ? properties.modelName() : available.getFirst();
+    }
+
+    public java.util.List<String> listAvailableModels() {
+        var names = new java.util.LinkedHashSet<String>();
+        if (isModelPresent(Path.of(properties.modelDir(), properties.modelName()))) {
+            names.add(properties.modelName());
+        }
+        for (Path root : modelRoots()) {
+            if (!Files.isDirectory(root)) {
+                continue;
+            }
+            try (var dirs = Files.list(root)) {
+                dirs.filter(this::isModelPresent)
+                        .map(p -> p.getFileName().toString())
+                        .sorted()
+                        .forEach(names::add);
+            } catch (IOException ignored) {
+                // listing is best-effort
+            }
+        }
+        names.removeAll(unpacking);
+        return java.util.List.copyOf(names);
+    }
+
+    /** Models currently being unpacked from dropped zips (not yet usable). */
+    public java.util.Set<String> unpackingNow() {
+        return java.util.Set.copyOf(unpacking);
+    }
+
+    /**
+     * Optional speaker-identification model (vosk-model-spk-*): when present
+     * in any model folder, meeting voices get Speaker-1/2/... labels.
+     */
+    public java.util.Optional<Path> findSpeakerModel() {
+        for (Path root : modelRoots()) {
+            if (!Files.isDirectory(root)) {
+                continue;
+            }
+            try (var dirs = Files.list(root)) {
+                var match = dirs.filter(Files::isDirectory)
+                        .filter(p -> p.getFileName().toString().startsWith("vosk-model-spk"))
+                        .filter(p -> !unpacking.contains(p.getFileName().toString()))
+                        .findFirst();
+                if (match.isPresent()) {
+                    return match;
+                }
+            } catch (IOException ignored) {
+                // best-effort
+            }
+        }
+        return java.util.Optional.empty();
+    }
+
+    /** Resolves a user-picked alternative model from local folders only. */
+    public synchronized Path ensureModel(String name) throws IOException, InterruptedException {
+        if (name == null || name.isBlank() || name.equals(properties.modelName())) {
+            return ensureModel();
+        }
+        for (Path root : modelRoots()) {
+            Path candidate = root.resolve(name);
+            if (isModelPresent(candidate)) {
+                return candidate;
+            }
+        }
+        Path configured = Path.of(properties.modelDir(), name);
+        if (isModelPresent(configured)) {
+            return configured;
+        }
+        throw new IOException("Model \"" + name + "\" not found. Place its folder (or .zip) next to "
+                + "the ai-assist jar and pick it again.");
     }
 
     /** Returns the model directory, never touching the network unless allowed. */
     public synchronized Path ensureModel() throws IOException, InterruptedException {
-        // Search local locations: a models/ folder next to the app, then the configured dir.
         Path bundled = Path.of("models", properties.modelName());
         if (isModelPresent(bundled)) {
             return bundled;
@@ -48,20 +235,35 @@ public class VoskModelManager {
         if (isModelPresent(modelPath)) {
             return modelPath;
         }
+
+        // First run of a self-contained build: extract the model shipped
+        // inside the jar to the model directory.
+        try (InputStream embedded = embeddedModelZip()) {
+            if (embedded != null) {
+                log.info("Extracting embedded speech model to {}", modelPath);
+                Files.createDirectories(modelPath.getParent());
+                unzip(embedded, modelPath.getParent());
+                if (isModelPresent(modelPath)) {
+                    return modelPath;
+                }
+                log.warn("Embedded model archive did not contain {}", properties.modelName());
+            }
+        }
+
         if (!properties.allowDownload()) {
-            throw new IOException(("Speech model \"%s\" not found (looked in %s and %s) and runtime "
-                    + "download is disabled so the app stays offline. Either build with "
-                    + "`mvn package -Pfetch-model`, or download %s on another machine, unzip it, and "
-                    + "place the folder in one of those locations.")
-                    .formatted(properties.modelName(), bundled.toAbsolutePath(), modelPath.toAbsolutePath(),
-                            properties.modelUrl()));
+            throw new IOException(("No speech model found. Place a Vosk model folder or .zip "
+                    + "(e.g. vosk-model-en-us-0.22-lgraph from alphacephei.com/vosk/models) next to "
+                    + "the ai-assist jar or in %s, then press Start again.")
+                    .formatted(bundled.toAbsolutePath().getParent()));
         }
         log.info("Vosk model not found at {}; downloading from {}", modelPath, properties.modelUrl());
         Files.createDirectories(modelPath.getParent());
         Path zip = Files.createTempFile("vosk-model", ".zip");
         try {
             download(properties.modelUrl(), zip);
-            unzip(zip, modelPath.getParent());
+            try (InputStream in = Files.newInputStream(zip)) {
+                unzip(in, modelPath.getParent());
+            }
         } finally {
             Files.deleteIfExists(zip);
         }
@@ -70,6 +272,11 @@ public class VoskModelManager {
         }
         log.info("Vosk model ready at {}", modelPath);
         return modelPath;
+    }
+
+    /** Overridable for tests; returns null when no model is embedded in the jar. */
+    protected InputStream embeddedModelZip() {
+        return getClass().getResourceAsStream(EMBEDDED_MODEL_RESOURCE);
     }
 
     private boolean isModelPresent(Path modelPath) {
@@ -90,8 +297,8 @@ public class VoskModelManager {
         }
     }
 
-    private void unzip(Path zip, Path targetDir) throws IOException {
-        try (ZipInputStream zis = new ZipInputStream(Files.newInputStream(zip))) {
+    private void unzip(InputStream zipStream, Path targetDir) throws IOException {
+        try (ZipInputStream zis = new ZipInputStream(zipStream)) {
             ZipEntry entry;
             while ((entry = zis.getNextEntry()) != null) {
                 Path resolved = targetDir.resolve(entry.getName()).normalize();

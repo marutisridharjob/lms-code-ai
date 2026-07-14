@@ -38,11 +38,34 @@
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
         </dependency>
-        <!-- Offline speech-to-text (Apache-2.0) used to transcribe live meeting audio -->
+        <!--
+          Offline speech-to-text (Apache-2.0). Used ONLY for the native
+          libraries it bundles (libvosk for Linux/macOS/Windows on the
+          classpath); its Java classes are bypassed because their eager JNA
+          registration crashes on macOS where the bundled dylib lacks
+          symbols they declare. See VoskNative for our own lazy binding.
+        -->
         <dependency>
             <groupId>com.alphacephei</groupId>
             <artifactId>vosk</artifactId>
             <version>0.3.45</version>
+        </dependency>
+        <!--
+          Whisper (OpenAI, MIT) via whisper.cpp — bundles native libs for
+          macOS/Windows/Linux. Used for the accurate complete-conversation
+          transcription of the recorded meeting on Stop; Vosk stays for the
+          real-time live captions. Fully offline, CPU-only.
+        -->
+        <dependency>
+            <groupId>io.github.givimad</groupId>
+            <artifactId>whisper-jni</artifactId>
+            <version>1.7.1</version>
+        </dependency>
+        <!-- Pinned to the version whose macOS resource lookup matches the vosk jar layout -->
+        <dependency>
+            <groupId>net.java.dev.jna</groupId>
+            <artifactId>jna</artifactId>
+            <version>5.7.0</version>
         </dependency>
 
         <dependency>
@@ -63,8 +86,10 @@
 
     <profiles>
         <!--
-          One-time, build-machine-only fetch of the offline speech model into
-          ./models so the application itself never needs the internet:
+          Optional convenience for developers: fetch the small English model
+          into ./models next to the build so you can run the app immediately.
+          The shipped app bundles NO model — users drop their own model .zip
+          in the app folder and it is extracted on first start.
               mvn package -Pfetch-model
         -->
         <profile>
