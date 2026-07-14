@@ -94,6 +94,8 @@ public class MeetingConsole {
     private javax.swing.JCheckBox cbDetailed;
     private javax.swing.JCheckBox cbProfessional;
     private javax.swing.JCheckBox cbBullets;
+    private javax.swing.JCheckBox cbEditorSummary;
+    private javax.swing.JCheckBox cbComposeSummary;
     private final java.util.List<javax.swing.JCheckBox> styleCheckboxes = new java.util.ArrayList<>();
     private final java.util.List<javax.swing.JCheckBox> editorStyleChecks = new java.util.ArrayList<>();
     private JPanel editorStyleRow;
@@ -432,11 +434,13 @@ public class MeetingConsole {
         cbDetailed = themedCheck("Make detailed");
         cbProfessional = themedCheck("Professional");
         cbBullets = themedCheck("Bullet points");
+        cbEditorSummary = themedCheck("Meeting summary");
+        cbEditorSummary.setToolTipText("Turn the text into a detailed meeting summary with action points");
         cbGrammar.setSelected(true);
         editorInstructions = new javax.swing.JTextField(18);
         // Row 1: the editing options.
         JPanel options = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
-        for (var cb : java.util.List.of(cbGrammar, cbCompact, cbDetailed, cbProfessional, cbBullets)) {
+        for (var cb : java.util.List.of(cbGrammar, cbCompact, cbDetailed, cbProfessional, cbBullets, cbEditorSummary)) {
             options.add(cb);
         }
         // Row 2: every communication style as a checkbox (combinable).
@@ -498,26 +502,33 @@ public class MeetingConsole {
             setEditorStatus("Load a file or paste some text first.", true);
             return;
         }
+        boolean summary = cbEditorSummary.isSelected();
         var styles = editorStyleChecks.stream()
                 .filter(javax.swing.AbstractButton::isSelected)
                 .map(cb -> (com.aiassist.draft.StyleRewriteService.Style) cb.getClientProperty("style"))
                 .toList();
-        setEditorStatus("Applying…", false);
+        setEditorStatus(summary ? "Summarizing…" : "Applying…", false);
         new Thread(() -> {
             try {
-                String result = styleRewriteService.applyEditor(text,
-                        cbGrammar.isSelected(), cbCompact.isSelected(), cbDetailed.isSelected(),
-                        cbProfessional.isSelected(), cbBullets.isSelected(), styles,
-                        editorInstructions.getText());
+                String result = summary
+                        ? styleRewriteService.summarizeMeeting(text, editorInstructions.getText())
+                        : styleRewriteService.applyEditor(text,
+                                cbGrammar.isSelected(), cbCompact.isSelected(), cbDetailed.isSelected(),
+                                cbProfessional.isSelected(), cbBullets.isSelected(), styles,
+                                editorInstructions.getText());
                 boolean instructionsIgnored = !styleRewriteService.llmAvailable()
                         && editorInstructions.getText() != null
                         && !editorInstructions.getText().isBlank();
                 SwingUtilities.invokeLater(() -> {
                     editorArea.setText(result);
                     editorArea.setCaretPosition(0);
-                    setEditorStatus(instructionsIgnored
-                            ? "Applied checked options (free-form instructions need the optional local Ollama)."
-                            : "Applied. Press Download to save it to your Desktop.", false);
+                    setEditorStatus(summary
+                            ? (styleRewriteService.llmAvailable()
+                                ? "Meeting summary with action points ready. Press Download to save it."
+                                : "Summary with action points ready (install local Ollama for a richer LLM summary).")
+                            : (instructionsIgnored
+                                ? "Applied checked options (free-form instructions need the optional local Ollama)."
+                                : "Applied. Press Download to save it to your Desktop."), false);
                 });
             } catch (Exception ex) {
                 SwingUtilities.invokeLater(() ->
@@ -629,6 +640,8 @@ public class MeetingConsole {
             styleCheckboxes.add(check);
             styleChecks.add(check);
         }
+        cbComposeSummary = themedCheck("Meeting summary");
+        cbComposeSummary.setToolTipText("Turn your content into a detailed meeting summary with action points");
         composeInstructions = new javax.swing.JTextField(18);
         JButton applyButton = new JButton("Apply");
         applyButton.setToolTipText("Apply every checked style and the instructions to your content");
@@ -636,6 +649,7 @@ public class MeetingConsole {
         composeStatus = new JLabel(" ");
 
         JPanel controls = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
+        controls.add(cbComposeSummary);
         controls.add(themedLabel("Instructions:"));
         controls.add(composeInstructions);
         controls.add(applyButton);
@@ -685,24 +699,30 @@ public class MeetingConsole {
             composeStatus.setText("Type or paste content into the top box first.");
             return;
         }
+        boolean summary = cbComposeSummary.isSelected();
         var styles = styleCheckboxes.stream()
                 .filter(javax.swing.AbstractButton::isSelected)
                 .map(cb -> (com.aiassist.draft.StyleRewriteService.Style) cb.getClientProperty("style"))
                 .toList();
-        composeStatus.setText("Applying…");
+        composeStatus.setText(summary ? "Summarizing…" : "Applying…");
         new Thread(() -> {
             try {
-                String result = styleRewriteService.applyStyles(feed, styles,
-                        composeInstructions.getText());
+                String result = summary
+                        ? styleRewriteService.summarizeMeeting(feed, composeInstructions.getText())
+                        : styleRewriteService.applyStyles(feed, styles, composeInstructions.getText());
                 boolean instructionsIgnored = !styleRewriteService.llmAvailable()
                         && composeInstructions.getText() != null
                         && !composeInstructions.getText().isBlank();
                 SwingUtilities.invokeLater(() -> {
                     composeResult.setText(result);
                     composeResult.setCaretPosition(0);
-                    composeStatus.setText(instructionsIgnored
-                            ? "Applied checked styles (free-form instructions need the optional local Ollama)."
-                            : "Applied.");
+                    composeStatus.setText(summary
+                            ? (styleRewriteService.llmAvailable()
+                                ? "Meeting summary with action points ready."
+                                : "Summary with action points ready (install local Ollama for a richer LLM summary).")
+                            : (instructionsIgnored
+                                ? "Applied checked styles (free-form instructions need the optional local Ollama)."
+                                : "Applied."));
                 });
             } catch (Exception ex) {
                 SwingUtilities.invokeLater(() ->

@@ -100,6 +100,15 @@ horizontal scroll bars). **Download** saves the result to your **Desktop**
 with the same file name and format (a "-edited" suffix is added if the name
 is taken).
 
+Tick **Meeting summary** to turn the text into a **detailed summary with
+action points** instead: press **Apply** and the content (a transcript,
+pasted notes, anything) is rewritten as meeting notes — an overview, key
+points, and an **Action items** list. With the optional local Ollama enabled
+the summary is written by the LLM (and honours your **Instructions**);
+without it, the built-in drafter produces the structured notes offline. When
+**Meeting summary** is checked it takes over the Apply button, so the other
+editing options are skipped for that run.
+
 While a meeting is running, the Editor and
 Compose tabs hide the meeting controls and show a blinking
 **● MEETING IN PROGRESS** banner instead; switching back to the Meeting tab
@@ -118,6 +127,11 @@ and structure. For free-form LLM-quality rewriting, enable the optional
 local [Ollama](https://ollama.com) integration (`ai-assist.ollama.enabled=true`)
 — style drafts then go through your local model, falling back to the
 rules automatically.
+
+Tick **Meeting summary** (next to Instructions) and Apply turns your content
+into a **detailed summary with action points** — the same overview / key
+points / **Action items** notes as the Editor tab, written by the local LLM
+when Ollama is enabled, or by the built-in drafter offline.
 
 ### How a meeting is processed — two engines, both offline
 
