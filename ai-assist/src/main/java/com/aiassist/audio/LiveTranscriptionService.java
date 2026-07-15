@@ -402,6 +402,12 @@ public class LiveTranscriptionService {
         private volatile Process tapProcess;
         private volatile int level;
         private volatile String partialText = "";
+        // When the caption (partial) stops growing for this long, the phrase is
+        // committed to the transcript ourselves — Vosk's own end-of-phrase
+        // detection can keep a phrase open indefinitely on some inputs, leaving
+        // the box empty while the live caption keeps scrolling.
+        private static final long PARTIAL_FLUSH_MS = 900;
+        private long lastPartialGrewAt;
         private Thread thread;
 
         private CaptureWorker(ListeningSession session, AudioDeviceService.DeviceSelection selection,
@@ -530,6 +536,13 @@ public class LiveTranscriptionService {
                 partialText = "";
             } else {
                 updatePartial(recognizer.partialResult());
+                // Vosk hasn't closed the phrase, but if the caption has stopped
+                // growing (a natural pause) commit it now so the box keeps up.
+                if (!partialText.isBlank()
+                        && System.currentTimeMillis() - lastPartialGrewAt > PARTIAL_FLUSH_MS) {
+                    appendResult(recognizer.finalResult());
+                    partialText = "";
+                }
             }
         }
 
@@ -598,7 +611,15 @@ public class LiveTranscriptionService {
 
         private void updatePartial(String partialJson) {
             try {
-                partialText = objectMapper.readTree(partialJson).path("partial").asText("");
+                String next = objectMapper.readTree(partialJson).path("partial").asText("");
+                if (!next.equals(partialText)) {
+                    // The caption grew (or changed): note when, so the flush timer
+                    // only fires after it has been quiet for PARTIAL_FLUSH_MS.
+                    if (!next.isBlank()) {
+                        lastPartialGrewAt = System.currentTimeMillis();
+                    }
+                    partialText = next;
+                }
             } catch (Exception e) {
                 partialText = "";
             }
