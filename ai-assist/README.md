@@ -61,11 +61,14 @@ JDK — not a browser):
   and Pause is red,
 - **Start** — begins the meeting, or resumes it after a Pause,
 - **Pause** — temporarily stop listening without ending the meeting,
-- **Apply** — summarize the meeting *so far* without ending it: the meeting
-  notes are drafted from everything captured up to this point and shown in a
-  **Summary** pane below the live transcript (drag the divider to resize).
-  Press it as often as you like; the running transcript keeps flowing above
-  it. Nothing is saved — this is a live preview,
+- **Apply** — summarize the meeting *so far* without ending it: a detailed
+  summary with action points is drafted from everything captured up to this
+  point and shown in a **Summary** pane below the live transcript (drag the
+  divider to resize). This is the *same* summary the **Meeting summary**
+  checkbox produces on the Editor and Compose tabs — Apply behaves identically
+  on every tab, using the local Ollama LLM when enabled and the built-in
+  drafter otherwise. Press it as often as you like; the running transcript
+  keeps flowing above it. Nothing is saved — this is a live preview,
 - **Stop** — the meeting is complete: capture stops, the **summary** (meeting
   notes) followed by the **full verbatim transcript** is saved as a
   timestamped rich-text (.rtf) file on your **Desktop**

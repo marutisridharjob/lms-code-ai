@@ -47,20 +47,6 @@ public class MeetingEndService {
         this.fileWriter = fileWriter;
     }
 
-    /**
-     * Summarizes the meeting so far without ending it — used by the Meeting
-     * tab's Apply button. Returns null when nothing has been captured yet.
-     */
-    public Draft summarize(String sessionId) {
-        ListeningSession session = sessions.get(sessionId);
-        String transcript = session.transcript();
-        if (transcript.isBlank()) {
-            return null;
-        }
-        return drafter.draft(session.topic(), transcript,
-                new DraftOptions(DraftOptions.ContentType.MEETING_NOTES, DraftOptions.Tone.PROFESSIONAL));
-    }
-
     public Draft endMeeting(String sessionId, DraftOptions options) {
         ListeningSession session = sessions.get(sessionId);
 

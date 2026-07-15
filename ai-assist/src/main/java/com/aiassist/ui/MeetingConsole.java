@@ -1118,8 +1118,13 @@ public class MeetingConsole {
         summaryArea.setText("Summarizing…");
         new Thread(() -> {
             try {
-                Draft draft = meetingEndService.summarize(id);
-                String text = draft == null ? "Nothing has been captured yet." : summaryText(draft);
+                // Same LLM-first path as the Editor and Compose tabs, so Apply
+                // produces the identical detailed summary with action points
+                // whichever tab it is pressed on.
+                String transcriptText = sessions.get(id).transcript();
+                String text = transcriptText == null || transcriptText.isBlank()
+                        ? "Nothing has been captured yet."
+                        : styleRewriteService.summarizeMeeting(transcriptText, null);
                 SwingUtilities.invokeLater(() -> {
                     summaryArea.setText(text);
                     summaryArea.setCaretPosition(0);
