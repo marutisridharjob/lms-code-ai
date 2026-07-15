@@ -396,7 +396,9 @@ public class MeetingConsole {
         applyTheme(darkModeToggle.isSelected());
         frame.setVisible(true);
 
-        refreshTimer = new Timer(1000, e -> refresh());
+        // 250 ms so the live caption line keeps up with Vosk's partial results;
+        // a 1 s poll missed most partials (they reset the moment a phrase is final).
+        refreshTimer = new Timer(250, e -> refresh());
         refreshTimer.start();
     }
 
@@ -767,8 +769,9 @@ public class MeetingConsole {
     /** Pulls new utterances and capture state into the window once a second. */
     private void refresh() {
         // Scan for a running meeting app every ~5 s (cheap, best-effort).
+        // refresh() runs ~4x/s, so 20 ticks ≈ 5 s.
         if (detectorCountdown-- <= 0) {
-            detectorCountdown = 5;
+            detectorCountdown = 20;
             detectedMeetingApp = MeetingAppDetector.detectRunningMeetingApp().orElse(null);
             modelsAvailable = !liveTranscription.availableModels().isEmpty();
         }
