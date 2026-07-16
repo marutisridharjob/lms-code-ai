@@ -71,9 +71,9 @@ JDK — not a browser):
   keeps flowing above it. Nothing is saved — this is a live preview,
 - **Stop** — the meeting is complete: capture stops, the **summary** (meeting
   notes) followed by the **full verbatim transcript** is saved as a
-  timestamped rich-text (.rtf) file on your **Desktop**
-  (e.g. `2026-07-05_15-02-41_live-meeting-notes.rtf`), and that same summary
-  is shown in the Summary pane,
+  timestamped rich-text (.rtf) file in the **`meeting-notes`** folder inside
+  the app's own folder (e.g. `meeting-notes/2026-07-05_15-02-41_live-meeting-notes.rtf`),
+  and that same summary is shown in the Summary pane,
 - **who said what**: every transcript line is tagged with its source —
   `[you]` is you / your side of the room, `[other]` is the other
   participants captured from the system audio. The tags appear live in the
@@ -316,10 +316,9 @@ everything** — code and speech model. That single jar is all you ever copy,
 ship, or click: **double-click it** to start (needs Java 21+, e.g. from
 [adoptium.net](https://adoptium.net)), or run `java -jar ai-assist-<version>.jar`.
 The embedded model is unpacked invisibly into OS temp space at startup; the
-only visible output the app ever creates is the notes file that appears on
-your Desktop when you press Stop — never anything in the folder it was
-launched from. The app makes **zero network requests at runtime** — verified
-by socket inspection in testing.
+only visible output the app ever creates is the notes file it writes to the
+`meeting-notes` folder next to the jar when you press Stop. The app makes
+**zero network requests at runtime** — verified by socket inspection in testing.
 
 > Recording a meeting may require participants' consent depending on your
 > jurisdiction and company policy.
@@ -342,8 +341,8 @@ universal binary; no Rosetta needed).
    from a terminal, *Java* if you double-clicked. Click **Allow**. The app's
    status line tells you while it is waiting on this.
 4. The window opens, listening starts automatically, and after the meeting
-   you press **Stop**: the notes file appears on your
-   Desktop.
+   you press **Stop**: the notes file appears in the `meeting-notes` folder
+   next to the jar.
 
 ### macOS troubleshooting
 
@@ -359,7 +358,7 @@ universal binary; no Rosetta needed).
 | Status line never shows `system audio (native tap)` | macOS: the helper couldn't be built — install the Command Line Tools once (`xcode-select --install`), then press Pause → Resume. Windows: the helper is prebuilt inside the jar, so check the log (run from a terminal) for the `Native system-audio tap unavailable:` line, which states the exact reason. If the tap fails while running, the app disables it and Pause → Resume switches to the fallback capture automatically. |
 | Native tap listed but `[meeting]` level stays 0 % / helper exits (macOS) | The "System Audio Recording" permission was denied or never shown. System Settings → Privacy & Security → **Screen & System Audio Recording** → **System Audio Recording Only** tab → enable Terminal (or Java), then press Pause → Resume. The `[system-tap]` log lines show the exact error. |
 | BlackHole installed but missing from Audio MIDI Setup / Multi-Output list | CoreAudio only loads new drivers when it restarts. ① Verify the install: `ls /Library/Audio/Plug-Ins/HAL/` must show `BlackHole2ch.driver` — if not, the installer didn't finish (it asks for an admin password); `brew reinstall blackhole-2ch` or rerun the `.pkg`. ② Restart the audio daemon: `sudo killall coreaudiod` (it relaunches itself) — or reboot. ③ Fully quit Audio MIDI Setup (⌘Q) and reopen; **BlackHole 2ch** now appears in the device list and the Multi-Output tick-list. |
-| Where are my notes / the model? | Notes: on the **Desktop**, named `<date>_<time>_live-meeting-notes.rtf`. Model cache: `$TMPDIR/ai-assist/models` (managed by the OS; safe to ignore). |
+| Where are my notes / the model? | Notes: in the **`meeting-notes`** folder next to the jar, named `<date>_<time>_live-meeting-notes.rtf`. Model cache: `$TMPDIR/ai-assist/models` (managed by the OS; safe to ignore). |
 
 ## How it works
 
@@ -392,7 +391,7 @@ and device listing (`/api/audio/devices`).
 ai-assist:
   output:
     save-drafts: true          # save final notes at meeting Stop
-    dir: ${user.home}/Desktop   # where the notes file appears on Stop
+    dir: ""                    # blank = meeting-notes/ next to the jar; or an absolute path
   auto:
     start-capture: true        # listen immediately on launch
     draft-interval-seconds: 30 # interim in-memory draft cadence
