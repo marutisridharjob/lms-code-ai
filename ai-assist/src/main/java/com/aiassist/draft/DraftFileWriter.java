@@ -71,7 +71,10 @@ public class DraftFileWriter {
     private String toRtf(Draft draft) {
         StringBuilder rtf = new StringBuilder("{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 Helvetica;}}\\f0\\fs22\n");
         rtf.append("{\\b\\fs32 ").append(escape(draft.title())).append("\\par}\\par\n");
-        rtf.append(escape(draft.summary())).append("\\par\n");
+        if (draft.summary() != null && !draft.summary().isBlank()) {
+            rtf.append("{\\b\\fs26 Summary\\par}\n");
+            rtf.append(escape(draft.summary())).append("\\par\n");
+        }
         for (Draft.Section section : draft.sections()) {
             rtf.append("\\par{\\b\\fs26 ").append(escape(section.heading())).append("\\par}\n");
             for (String line : section.body().split("\n")) {
