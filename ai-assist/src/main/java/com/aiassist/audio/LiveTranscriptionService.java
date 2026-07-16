@@ -408,6 +408,11 @@ public class LiveTranscriptionService {
         // the box empty while the live caption keeps scrolling.
         private static final long PARTIAL_FLUSH_MS = 900;
         private long lastPartialGrewAt;
+        // Loudest sample seen (0-100) since the last committed phrase. A phrase
+        // whose audio never rose above near-silence is dropped, so a quiet room
+        // can't post a stray filler word like "the" when Pause flushes.
+        private static final int MIN_SPEECH_LEVEL = 3;
+        private volatile int phrasePeak;
         private Thread thread;
 
         private CaptureWorker(ListeningSession session, AudioDeviceService.DeviceSelection selection,
@@ -531,6 +536,9 @@ public class LiveTranscriptionService {
             if (rec != null) {
                 rec.record(selection.label(), pcm, length);
             }
+            if (level > phrasePeak) {
+                phrasePeak = level; // track the loudest moment of this phrase
+            }
             if (recognizer.acceptWaveform(pcm, length)) {
                 appendResult(recognizer.result());
                 partialText = "";
@@ -599,9 +607,12 @@ public class LiveTranscriptionService {
             try {
                 JsonNode node = objectMapper.readTree(resultJson);
                 String text = node.path("text").asText("");
-                // Capture every recognized phrase, unfiltered, labelled only by
-                // its source: [you] for the mic, [other] for the system audio.
-                if (!text.isBlank() && !session.isEnded()) {
+                // Capture every recognized phrase, labelled only by its source
+                // ([you] = mic, [other] = system audio), but drop phrases that
+                // carried no real audio energy — those are silence artefacts.
+                boolean hadSpeech = phrasePeak >= MIN_SPEECH_LEVEL;
+                phrasePeak = 0; // start measuring the next phrase
+                if (!text.isBlank() && hadSpeech && !session.isEnded()) {
                     session.addUtterance(text, selection.label());
                 }
             } catch (Exception e) {

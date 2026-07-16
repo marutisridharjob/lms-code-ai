@@ -131,6 +131,25 @@ into a **detailed summary with action points** — the same overview / key
 points / **Action items** notes as the Editor tab, written by the local LLM
 when Ollama is enabled, or by the built-in drafter offline.
 
+### Help tab
+
+A fourth tab with three sections:
+
+- **About** — *Architecture & Design by Maruti, version 0.1*.
+- **Help** — a link, **Instructions to use ai-assist**, that opens a window
+  with a **Search** box and a read-only information panel covering the
+  Meeting, Editor, and Compose tabs, how Vosk and the ggml/whisper.cpp models
+  work (with links to their sites), and the open-source licenses and
+  technology stack. Type a word and press **Search** to highlight every match;
+  **Close** (bottom-right) dismisses the window.
+- **Feedback** — type a note, pick a **Rating** (0–5), and press **Submit**.
+  This composes an email to the author (subject *Feedback on ai-assist with
+  rating N*, body = your note plus your rating, machine IP, user name, and
+  time zone/region) in your default mail client — no mail credentials are
+  embedded in the app, so you send it with one click. On success the form
+  greys out, shows **Submitted**, then clears. With no internet it greys out,
+  shows **No Internet** for two seconds, and re-enables.
+
 ### How a meeting is processed — two engines, both offline
 
 - **Live captions (Vosk):** while you talk, the meeting box shows real-time
