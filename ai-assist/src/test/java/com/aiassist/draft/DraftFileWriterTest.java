@@ -35,6 +35,15 @@ class DraftFileWriterTest {
     }
 
     @Test
+    void savedFileLeadsWithASummaryHeading() {
+        DraftFileWriter writer = new DraftFileWriter(new OutputProperties(true, tempDir.toString()));
+
+        Path saved = writer.save(draft("Team sync"));
+
+        assertThat(saved).content().contains("Summary");
+    }
+
+    @Test
     void returnsNullWhenSavingDisabled() {
         DraftFileWriter writer = new DraftFileWriter(new OutputProperties(false, tempDir.toString()));
 
