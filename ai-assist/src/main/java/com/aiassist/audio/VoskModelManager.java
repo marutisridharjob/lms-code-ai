@@ -182,30 +182,6 @@ public class VoskModelManager {
         return java.util.Set.copyOf(unpacking);
     }
 
-    /**
-     * Optional speaker-identification model (vosk-model-spk-*): when present
-     * in any model folder, meeting voices get Speaker-1/2/... labels.
-     */
-    public java.util.Optional<Path> findSpeakerModel() {
-        for (Path root : modelRoots()) {
-            if (!Files.isDirectory(root)) {
-                continue;
-            }
-            try (var dirs = Files.list(root)) {
-                var match = dirs.filter(Files::isDirectory)
-                        .filter(p -> p.getFileName().toString().startsWith("vosk-model-spk"))
-                        .filter(p -> !unpacking.contains(p.getFileName().toString()))
-                        .findFirst();
-                if (match.isPresent()) {
-                    return match;
-                }
-            } catch (IOException ignored) {
-                // best-effort
-            }
-        }
-        return java.util.Optional.empty();
-    }
-
     /** Resolves a user-picked alternative model from local folders only. */
     public synchronized Path ensureModel(String name) throws IOException, InterruptedException {
         if (name == null || name.isBlank() || name.equals(properties.modelName())) {
