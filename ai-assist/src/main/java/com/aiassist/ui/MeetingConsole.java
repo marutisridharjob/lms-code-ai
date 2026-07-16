@@ -1135,9 +1135,9 @@ public class MeetingConsole {
         }
         var partials = liveTranscription.partials();
         captionLabel.setText(partials.isEmpty() ? " "
-                : partials.entrySet().stream()
-                        .map(e -> e.getKey() + " ▸ " + e.getValue())
-                        .reduce((a, b) -> a + "   " + b)
+                : "hearing…  " + partials.entrySet().stream()
+                        .map(e -> sourceName(e.getKey()) + ": " + e.getValue())
+                        .reduce((a, b) -> a + "    " + b)
                         .orElse(" "));
         LiveTranscriptionService.Status status = liveTranscription.status();
         updateMeetingIndicator(status);
@@ -1192,13 +1192,22 @@ public class MeetingConsole {
         List<Utterance> utterances = session.utterances();
         for (int i = renderedUtterances; i < utterances.size(); i++) {
             Utterance u = utterances.get(i);
-            transcript.append("[" + LINE_TIME.format(u.capturedAt()) + "] ["
-                    + u.speaker() + "] " + u.text() + "\n");
+            transcript.append("[" + LINE_TIME.format(u.capturedAt()) + "] "
+                    + sourceName(u.speaker()) + ": " + u.text() + "\n");
         }
         if (utterances.size() > renderedUtterances) {
             renderedUtterances = utterances.size();
             transcript.setCaretPosition(transcript.getDocument().getLength());
         }
+    }
+
+    /** Friendly source name: "You" for your microphone, "Others" for the room. */
+    private static String sourceName(String label) {
+        return switch (label) {
+            case "you" -> "You";
+            case "other" -> "Others";
+            default -> label;
+        };
     }
 
     /** Blinking banner on the Editor/Compose tabs while a meeting is live. */
