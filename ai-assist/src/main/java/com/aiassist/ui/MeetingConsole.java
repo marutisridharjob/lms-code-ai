@@ -9,12 +9,15 @@ import java.awt.event.WindowEvent;
 import java.util.List;
 
 import javax.swing.JButton;
+import javax.swing.JDialog;
+import javax.swing.JEditorPane;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
+import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.Timer;
@@ -114,6 +117,13 @@ public class MeetingConsole {
     private JLabel meetingIndicator;
     private JPanel indicatorPanel;
     private JPanel southWrapPanel;
+    // Help tab.
+    private JPanel helpPanel;
+    private final java.util.List<JPanel> helpPanels = new java.util.ArrayList<>();
+    private JTextArea feedbackArea;
+    private javax.swing.JComboBox<Integer> ratingCombo;
+    private JButton feedbackSubmit;
+    private JLabel feedbackStatus;
     private boolean blinkOn;
     private JPanel bottomPanel;
     private JPanel buttonsPanel;
@@ -365,6 +375,7 @@ public class MeetingConsole {
         tabs.addTab("Meeting", meetingSplit);
         tabs.addTab("Editor", buildEditorTab());
         tabs.addTab("Compose", buildComposeTab());
+        tabs.addTab("Help", buildHelpTab());
         frame.add(tabs, BorderLayout.CENTER);
 
         // On the Editor/Compose tabs the meeting chrome (title row, status,
@@ -695,6 +706,343 @@ public class MeetingConsole {
         return area;
     }
 
+    private static final String FEEDBACK_TO = "marutisridhar.job@gmail.com";
+
+    /**
+     * Help tab: About, a Help link that opens the instructions window, and a
+     * Feedback form that composes an email to the author.
+     */
+    private JPanel buildHelpTab() {
+        JPanel panel = new JPanel();
+        panel.setLayout(new javax.swing.BoxLayout(panel, javax.swing.BoxLayout.Y_AXIS));
+        panel.setBorder(javax.swing.BorderFactory.createEmptyBorder(14, 16, 14, 16));
+
+        // Section 1 — About.
+        panel.add(leftRow(sectionHeading("About")));
+        panel.add(leftRow(themedLabel("Architecture & Design by Maruti, version 0.1")));
+        panel.add(javax.swing.Box.createVerticalStrut(18));
+
+        // Section 2 — Help (a link that opens the instructions window).
+        panel.add(leftRow(sectionHeading("Help")));
+        JLabel instructionsLink = linkLabel("Instructions to use ai-assist");
+        instructionsLink.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                showInstructionsWindow();
+            }
+        });
+        panel.add(leftRow(instructionsLink));
+        panel.add(javax.swing.Box.createVerticalStrut(18));
+
+        // Section 3 — Feedback.
+        panel.add(leftRow(sectionHeading("Feedback")));
+        feedbackArea = multiLineArea();
+        JScrollPane feedbackScroll = new JScrollPane(feedbackArea);
+        feedbackScroll.setPreferredSize(new java.awt.Dimension(560, 150));
+        feedbackScroll.setMaximumSize(new java.awt.Dimension(Integer.MAX_VALUE, 170));
+        feedbackScroll.setAlignmentX(java.awt.Component.LEFT_ALIGNMENT);
+        panel.add(feedbackScroll);
+
+        ratingCombo = new javax.swing.JComboBox<>(new Integer[] {0, 1, 2, 3, 4, 5});
+        JPanel ratingRow = leftRow(themedLabel("Rating:"), ratingCombo);
+        panel.add(ratingRow);
+
+        feedbackSubmit = new JButton("Submit");
+        feedbackSubmit.addActionListener(e -> submitFeedback());
+        feedbackStatus = new JLabel(" ");
+        themedLabels.add(feedbackStatus);
+        panel.add(leftRow(feedbackSubmit, feedbackStatus));
+
+        helpPanel = panel;
+        JPanel wrap = new JPanel(new BorderLayout());
+        wrap.add(panel, BorderLayout.NORTH);
+        helpPanels.add(wrap);
+        return wrap;
+    }
+
+    /** A bold, slightly larger heading label that also follows the theme. */
+    private JLabel sectionHeading(String text) {
+        JLabel label = themedLabel(text);
+        label.setFont(label.getFont().deriveFont(Font.BOLD, 16f));
+        return label;
+    }
+
+    /** A blue, underlined, hand-cursor label that behaves like a hyperlink. */
+    private JLabel linkLabel(String text) {
+        JLabel label = new JLabel("<html><u>" + text + "</u></html>");
+        label.setForeground(new java.awt.Color(0x3B82F6));
+        label.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
+        return label;
+    }
+
+    /** Left-aligned row that plays nicely inside the vertical BoxLayout. */
+    private JPanel leftRow(java.awt.Component... components) {
+        JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
+        row.setAlignmentX(java.awt.Component.LEFT_ALIGNMENT);
+        row.setMaximumSize(new java.awt.Dimension(Integer.MAX_VALUE, 40));
+        for (java.awt.Component c : components) {
+            row.add(c);
+        }
+        helpPanels.add(row);
+        return row;
+    }
+
+    /**
+     * Opens the instructions window: a searchable, read-only information box
+     * plus a Close button. The search box highlights every match in the text.
+     */
+    private void showInstructionsWindow() {
+        boolean dark = darkMode;
+        java.awt.Color bg = dark ? new java.awt.Color(0x1E1E1E) : java.awt.Color.WHITE;
+        java.awt.Color panelBg = dark ? new java.awt.Color(0x2B2B2B) : new java.awt.Color(0xF2F2F2);
+
+        JDialog dialog = new JDialog(frame, "Instructions to use ai-assist", false);
+        dialog.setSize(760, 600);
+        dialog.setLocationRelativeTo(frame);
+
+        JEditorPane info = new JEditorPane("text/html", instructionsHtml(dark));
+        info.setEditable(false);
+        info.setCaretPosition(0);
+        info.addHyperlinkListener(e -> {
+            if (e.getEventType() == javax.swing.event.HyperlinkEvent.EventType.ACTIVATED && e.getURL() != null) {
+                openInBrowser(e.getURL().toString());
+            }
+        });
+        JScrollPane infoScroll = new JScrollPane(info);
+
+        JTextField searchField = new JTextField(26);
+        JButton searchButton = new JButton("Search");
+        Runnable search = () -> highlightMatches(info, searchField.getText());
+        searchButton.addActionListener(e -> search.run());
+        searchField.addActionListener(e -> search.run());
+        JPanel searchRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 6));
+        searchRow.setBackground(panelBg);
+        JLabel searchLabel = new JLabel("Search:");
+        searchLabel.setForeground(dark ? new java.awt.Color(0xE6E6E6) : java.awt.Color.BLACK);
+        searchRow.add(searchLabel);
+        searchRow.add(searchField);
+        searchRow.add(searchButton);
+
+        JButton close = new JButton("Close");
+        close.addActionListener(e -> dialog.dispose());
+        JPanel bottom = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 6));
+        bottom.setBackground(panelBg);
+        bottom.add(close);
+
+        dialog.getContentPane().setBackground(panelBg);
+        dialog.setLayout(new BorderLayout());
+        dialog.add(searchRow, BorderLayout.NORTH);
+        dialog.add(infoScroll, BorderLayout.CENTER);
+        dialog.add(bottom, BorderLayout.SOUTH);
+        dialog.setVisible(true);
+    }
+
+    private final javax.swing.text.Highlighter.HighlightPainter searchPainter =
+            new javax.swing.text.DefaultHighlighter.DefaultHighlightPainter(new java.awt.Color(0xFFE082));
+
+    /** Highlights every occurrence of the term and scrolls to the first. */
+    private void highlightMatches(JEditorPane info, String term) {
+        javax.swing.text.Highlighter highlighter = info.getHighlighter();
+        highlighter.removeAllHighlights();
+        if (term == null || term.isBlank()) {
+            return;
+        }
+        try {
+            javax.swing.text.Document doc = info.getDocument();
+            String haystack = doc.getText(0, doc.getLength()).toLowerCase();
+            String needle = term.strip().toLowerCase();
+            int index = haystack.indexOf(needle);
+            boolean first = true;
+            while (index >= 0) {
+                highlighter.addHighlight(index, index + needle.length(), searchPainter);
+                if (first) {
+                    info.setCaretPosition(index);
+                    first = false;
+                }
+                index = haystack.indexOf(needle, index + needle.length());
+            }
+        } catch (javax.swing.text.BadLocationException ignored) {
+            // out of range after an edit; nothing to highlight
+        }
+    }
+
+    private void openInBrowser(String url) {
+        try {
+            if (java.awt.Desktop.isDesktopSupported()
+                    && java.awt.Desktop.getDesktop().isSupported(java.awt.Desktop.Action.BROWSE)) {
+                java.awt.Desktop.getDesktop().browse(java.net.URI.create(url));
+            }
+        } catch (Exception e) {
+            log.warn("Could not open {}: {}", url, e.getMessage());
+        }
+    }
+
+    /** Sends the feedback as an email, with the online / offline behaviour. */
+    private void submitFeedback() {
+        String message = feedbackArea.getText();
+        Integer rating = (Integer) ratingCombo.getSelectedItem();
+        int rate = rating == null ? 0 : rating;
+        setFeedbackControlsEnabled(false);
+        new Thread(() -> {
+            if (!hasInternet()) {
+                SwingUtilities.invokeLater(() -> feedbackStatus.setText("No Internet"));
+                sleepQuietly(2000);
+                SwingUtilities.invokeLater(() -> {
+                    feedbackStatus.setText(" ");
+                    setFeedbackControlsEnabled(true);
+                });
+                return;
+            }
+            try {
+                String subject = "Feedback on ai-assist with rating " + rate;
+                openMailClient(FEEDBACK_TO, subject, feedbackBody(message, rate));
+            } catch (Exception e) {
+                log.warn("Could not open the mail client: {}", e.getMessage());
+            }
+            SwingUtilities.invokeLater(() -> feedbackStatus.setText("Submitted"));
+            sleepQuietly(1000);
+            SwingUtilities.invokeLater(() -> {
+                feedbackArea.setText("");
+                ratingCombo.setSelectedIndex(0);
+                feedbackStatus.setText(" ");
+                setFeedbackControlsEnabled(true);
+            });
+        }, "feedback-submit").start();
+    }
+
+    private void setFeedbackControlsEnabled(boolean enabled) {
+        feedbackArea.setEnabled(enabled);
+        feedbackSubmit.setEnabled(enabled);
+        ratingCombo.setEnabled(enabled);
+    }
+
+    /** Body of the feedback email: message, rating, and machine context. */
+    static String feedbackBody(String message, int rating) {
+        String user = System.getProperty("user.name", "unknown");
+        String ip;
+        try {
+            ip = java.net.InetAddress.getLocalHost().getHostAddress();
+        } catch (Exception e) {
+            ip = "unknown";
+        }
+        String location = java.util.TimeZone.getDefault().getID()
+                + " / " + java.util.Locale.getDefault().getDisplayCountry();
+        return (message == null ? "" : message.strip())
+                + "\n\n--"
+                + "\nUser rating: " + rating + "/5"
+                + "\nIP address: " + ip
+                + "\nUser name: " + user
+                + "\nLocation: " + location;
+    }
+
+    /** True when a well-known host is reachable within a short timeout. */
+    private static boolean hasInternet() {
+        for (String host : new String[] {"smtp.gmail.com", "google.com", "1.1.1.1"}) {
+            try (java.net.Socket socket = new java.net.Socket()) {
+                socket.connect(new java.net.InetSocketAddress(host, 443), 1500);
+                return true;
+            } catch (Exception ignored) {
+                // try the next host
+            }
+        }
+        return false;
+    }
+
+    private void openMailClient(String to, String subject, String body) throws Exception {
+        String uri = "mailto:" + to + "?subject=" + urlEncode(subject) + "&body=" + urlEncode(body);
+        if (java.awt.Desktop.isDesktopSupported()
+                && java.awt.Desktop.getDesktop().isSupported(java.awt.Desktop.Action.MAIL)) {
+            java.awt.Desktop.getDesktop().mail(new java.net.URI(uri));
+        } else {
+            openInBrowser(uri);
+        }
+    }
+
+    private static String urlEncode(String value) {
+        return java.net.URLEncoder.encode(value == null ? "" : value.replace("\r", ""),
+                java.nio.charset.StandardCharsets.UTF_8).replace("+", "%20");
+    }
+
+    private static void sleepQuietly(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    /** The complete, read-only instructions shown in the Help window. */
+    private String instructionsHtml(boolean dark) {
+        String fg = dark ? "#E6E6E6" : "#1A1A1A";
+        String link = dark ? "#6FA8FF" : "#1565C0";
+        String heading = dark ? "#FFFFFF" : "#000000";
+        return "<html><body style='font-family:sans-serif;font-size:12px;color:" + fg
+                + ";margin:10px;'>"
+                + "<h2 style='color:" + heading + ";'>ai-assist — how to use it</h2>"
+
+                + "<h3 style='color:" + heading + ";'>Meeting tab</h3>"
+                + "<p>Press <b>Start</b> to begin capturing the meeting — your microphone "
+                + "(<b>[you]</b>) and the computer's own audio (<b>[other]</b>, what the other "
+                + "participants say) are transcribed live. <b>Pause</b> suspends listening without "
+                + "ending the meeting; <b>Start</b> resumes it. The live caption line under the box "
+                + "shows words as they are recognized; finished phrases drop into the transcript box. "
+                + "<b>Apply</b> shows a detailed summary with action points so far, without ending the "
+                + "meeting. <b>Stop</b> ends the meeting and saves the summary plus the full verbatim "
+                + "transcript as a timestamped rich-text file on your Desktop. <b>Clear</b> empties the "
+                + "box. Pick the speech model from the dropdown; the choice is remembered.</p>"
+
+                + "<h3 style='color:" + heading + ";'>Editor tab</h3>"
+                + "<p>Paste text or press <b>Load</b> to open a file. Tick any of <b>Fix grammar</b>, "
+                + "<b>Make compact</b>, <b>Make detailed</b>, <b>Professional</b>, <b>Bullet points</b>, "
+                + "the communication styles, or <b>Meeting summary</b>, optionally type free-form "
+                + "<b>Instructions</b>, then press <b>Apply</b>. <b>Meeting summary</b> turns the text into "
+                + "a detailed summary with action points. <b>Download</b> saves the result to your Desktop.</p>"
+
+                + "<h3 style='color:" + heading + ";'>Compose tab</h3>"
+                + "<p>Type or paste into the top box, tick communication styles (or <b>Meeting summary</b>), "
+                + "add optional <b>Instructions</b>, and press <b>Apply</b>; the rewritten text appears in "
+                + "the Modified box below. Free-form instructions and the richest summaries use the optional "
+                + "local <a href='https://ollama.com'>Ollama</a> LLM when it is enabled; otherwise everything "
+                + "runs on the built-in offline rules and drafter.</p>"
+
+                + "<h3 style='color:" + heading + ";'>Vosk — live speech recognition</h3>"
+                + "<p>Live captions are produced by <b>Vosk</b>, a lightweight offline speech-to-text engine. "
+                + "Drop a Vosk model (a folder or its .zip) next to the app and it is loaded automatically. "
+                + "Models and details: <a href='https://alphacephei.com/vosk/'>alphacephei.com/vosk</a> and "
+                + "<a href='https://alphacephei.com/vosk/models'>alphacephei.com/vosk/models</a>.</p>"
+
+                + "<h3 style='color:" + heading + ";'>ggml / whisper.cpp — accurate transcript</h3>"
+                + "<p>On <b>Stop</b>, the recorded audio can be re-transcribed by <b>Whisper</b> "
+                + "(whisper.cpp) for an accurate, complete-conversation transcript. It needs one "
+                + "<code>ggml-*.bin</code> model in the app folder (see the <code>models/</code> folder's "
+                + "download scripts). About the format and models: "
+                + "<a href='https://github.com/ggerganov/whisper.cpp'>github.com/ggerganov/whisper.cpp</a>. "
+                + "Everything runs 100% locally — no audio ever leaves the machine.</p>"
+
+                + "<h3 style='color:" + heading + ";'>Open-source licenses</h3>"
+                + "<ul>"
+                + "<li>Vosk speech models &amp; API — Apache-2.0 "
+                + "(<a href='https://github.com/alphacep/vosk-api'>vosk-api</a>)</li>"
+                + "<li>Whisper / whisper.cpp — MIT "
+                + "(<a href='https://github.com/ggerganov/whisper.cpp'>whisper.cpp</a>)</li>"
+                + "<li>whisper-jni (Java binding) — MIT "
+                + "(<a href='https://github.com/GiviMAD/whisper-jni'>whisper-jni</a>)</li>"
+                + "<li>JNA — Apache-2.0 / LGPL-2.1</li>"
+                + "<li>Spring Boot &amp; Jackson — Apache-2.0</li>"
+                + "<li>Java runtime (OpenJDK) — GPLv2 with Classpath Exception</li>"
+                + "<li>ai-assist application code — open source</li>"
+                + "</ul>"
+
+                + "<h3 style='color:" + heading + ";'>Technology stack</h3>"
+                + "<p>Java 21 &amp; Swing (desktop UI, no browser), Spring Boot (app wiring and an optional "
+                + "localhost REST API), Vosk (live captions), Whisper/whisper.cpp via whisper-jni (final "
+                + "transcript), and an optional local Ollama LLM for richer drafting. All processing is "
+                + "offline; the internet is used only to email this feedback.</p>"
+
+                + "<p style='color:" + link + ";'>Tip: use the Search box above to jump to any word on this page.</p>"
+                + "</body></html>";
+    }
+
     private void composeApply() {
         String feed = composeFeed.getText();
         if (feed == null || feed.isBlank()) {
@@ -985,10 +1333,20 @@ public class MeetingConsole {
             panel.setOpaque(true);
             panel.setBackground(panelBg);
         }
-        for (JTextArea area : java.util.List.of(composeResult, composeFeed)) {
+        for (JTextArea area : java.util.List.of(composeResult, composeFeed, feedbackArea)) {
             area.setBackground(textBg);
             area.setForeground(textFg);
             area.setCaretColor(textFg);
+        }
+        ratingCombo.setBackground(textBg);
+        ratingCombo.setForeground(textFg);
+        if (helpPanel != null) {
+            helpPanel.setOpaque(true);
+            helpPanel.setBackground(panelBg);
+        }
+        for (JPanel panel : helpPanels) {
+            panel.setOpaque(true);
+            panel.setBackground(panelBg);
         }
         for (javax.swing.JTextField field : java.util.List.of(editorInstructions, composeInstructions)) {
             field.setBackground(textBg);
