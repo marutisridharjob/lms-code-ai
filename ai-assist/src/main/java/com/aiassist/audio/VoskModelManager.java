@@ -77,7 +77,8 @@ public class VoskModelManager {
     }
 
     /** Directory containing the running jar (falls back to the working dir). */
-    private static Path appHome() {
+    /** The folder the app runs from — the jar's directory, or the working dir. */
+    public static Path appHome() {
         String classPath = System.getProperty("java.class.path", "");
         if (!classPath.contains(java.io.File.pathSeparator) && classPath.endsWith(".jar")) {
             Path parent = Path.of(classPath).toAbsolutePath().getParent();

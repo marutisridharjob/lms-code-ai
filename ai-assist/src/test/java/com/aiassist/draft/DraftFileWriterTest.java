@@ -62,4 +62,19 @@ class DraftFileWriterTest {
         assertThat(saved.getFileName().toString().length()).isLessThan(100);
         assertThat(saved).exists();
     }
+
+    @Test
+    void blankDirSavesIntoAppFolderMeetingNotes() throws Exception {
+        DraftFileWriter writer = new DraftFileWriter(new OutputProperties(true, ""));
+
+        Path saved = writer.save(draft("Team sync"));
+
+        try {
+            assertThat(saved).exists();
+            assertThat(saved.getParent().getFileName().toString()).isEqualTo("meeting-notes");
+        } finally {
+            java.nio.file.Files.deleteIfExists(saved);
+            java.nio.file.Files.deleteIfExists(saved.getParent());
+        }
+    }
 }

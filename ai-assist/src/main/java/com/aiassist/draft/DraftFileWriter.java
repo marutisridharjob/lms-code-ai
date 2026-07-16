@@ -43,7 +43,7 @@ public class DraftFileWriter {
             return null;
         }
         try {
-            Path dir = Path.of(properties.dir());
+            Path dir = resolveDir();
             Files.createDirectories(dir);
             Path file = dir.resolve(fileName);
             Files.writeString(file, toRtf(draft));
@@ -53,6 +53,18 @@ public class DraftFileWriter {
             log.warn("Could not save draft to disk: {}", e.getMessage());
             return null;
         }
+    }
+
+    /**
+     * The output folder: the configured {@code ai-assist.output.dir} when set,
+     * otherwise a {@code meeting-notes} folder in the app's own folder.
+     */
+    private Path resolveDir() {
+        String configured = properties.dir();
+        if (configured != null && !configured.isBlank()) {
+            return Path.of(configured);
+        }
+        return com.aiassist.audio.VoskModelManager.appHome().resolve("meeting-notes");
     }
 
     /** Renders the structured draft as a simple RTF document. */
